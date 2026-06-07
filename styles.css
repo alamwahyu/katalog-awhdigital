@@ -34,6 +34,7 @@ body {
     url("https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=1800&q=80") center top / cover fixed;
   font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   line-height: 1.6;
+  overflow-x: hidden;
 }
 
 a {
@@ -47,7 +48,7 @@ img {
 }
 
 .page-shell {
-  overflow: hidden;
+  overflow: visible;
 }
 
 .container {
@@ -56,10 +57,16 @@ img {
 }
 
 .site-nav {
-  position: absolute;
-  inset: 0 0 auto;
-  z-index: 20;
-  padding: 18px 0;
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  z-index: 70;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(201, 161, 90, 0.18);
+  background: rgba(255, 250, 240, 0.86);
+  box-shadow: 0 10px 28px rgba(83, 60, 35, 0.08);
+  backdrop-filter: blur(16px);
 }
 
 .nav-inner {
@@ -76,22 +83,28 @@ img {
 }
 
 .brand {
-  gap: 10px;
+  gap: 12px;
   color: var(--brown);
   font-weight: 800;
 }
 
 .brand-mark {
-  display: grid;
-  width: 42px;
-  height: 42px;
-  place-items: center;
-  border: 1px solid rgba(201, 161, 90, 0.36);
+  display: inline-flex;
+  width: 48px;
+  height: 48px;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 1px solid rgba(201, 161, 90, 0.24);
   border-radius: 50%;
-  color: var(--white);
-  background: linear-gradient(135deg, var(--brown), var(--soft-gold));
-  font-size: 0.78rem;
-  letter-spacing: 0;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: 0 8px 18px rgba(83, 60, 35, 0.1);
+}
+
+.brand-mark img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 .nav-links {
@@ -122,7 +135,7 @@ img {
   min-height: 92vh;
   display: grid;
   align-items: center;
-  padding: 64px 0 52px;
+  padding: 120px 0 52px;
   isolation: isolate;
 }
 
@@ -466,18 +479,25 @@ h2 {
 
 .catalog-card {
   position: relative;
-  overflow: hidden;
+  overflow: visible;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--white);
-  box-shadow: var(--shadow);
+  box-shadow:
+    0 12px 26px rgba(83, 60, 35, 0.12),
+    0 3px 8px rgba(83, 60, 35, 0.06);
   isolation: isolate;
   transition: transform 280ms ease, box-shadow 280ms ease, border-color 280ms ease;
 }
 
-.catalog-card::before {
+.catalog-card::before,
+.catalog-card::after {
   content: "";
   position: absolute;
+  pointer-events: none;
+}
+
+.catalog-card::before {
   inset: -1px;
   z-index: -1;
   border-radius: inherit;
@@ -486,20 +506,42 @@ h2 {
   transition: opacity 280ms ease;
 }
 
-.catalog-card:hover {
-  transform: translateY(-9px);
-  border-color: rgba(201, 161, 90, 0.48);
-  box-shadow: var(--shadow-hover);
+.catalog-card::after {
+  left: 18px;
+  right: 18px;
+  bottom: -15px;
+  z-index: -2;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(83, 60, 35, 0.28);
+  filter: blur(18px);
+  opacity: 0;
+  transform: scaleX(0.9);
+  transition: opacity 280ms ease, transform 280ms ease;
 }
 
-.catalog-card:hover::before {
+.catalog-card:hover {
+  transform: translateY(-10px);
+  border-color: rgba(201, 161, 90, 0.48);
+  box-shadow:
+    0 28px 56px rgba(83, 60, 35, 0.24),
+    0 12px 24px rgba(201, 161, 90, 0.15);
+}
+
+.catalog-card:hover::before,
+.catalog-card:hover::after {
   opacity: 1;
+}
+
+.catalog-card:hover::after {
+  transform: scaleX(1);
 }
 
 .thumb {
   position: relative;
   aspect-ratio: 3 / 4;
   overflow: hidden;
+  border-radius: var(--radius) var(--radius) 0 0;
   background: var(--cream);
 }
 
@@ -1015,13 +1057,13 @@ h2 {
     background-attachment: scroll;
   }
 
-  .site-nav {
-    position: absolute;
-    padding: 12px 0;
+  .nav-inner {
+    align-items: center;
   }
 
-  .nav-inner {
-    align-items: flex-start;
+  .brand-mark {
+    width: 42px;
+    height: 42px;
   }
 
   .nav-links {
@@ -1030,7 +1072,7 @@ h2 {
 
   .hero {
     min-height: auto;
-    padding: 96px 0 56px;
+    padding: 112px 0 56px;
   }
 
   .hero::before {
