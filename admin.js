@@ -68,6 +68,10 @@ let selectedImage = "";
 let categories = [];
 let pricePackages = [];
 
+const IMAGE_MAX_SIZE = 900;
+const IMAGE_QUALITY = 0.76;
+const THEME_UPLOAD_ENDPOINT = "upload-theme.php";
+
 const onlyDigits = (value) => value.replace(/[^\d]/g, "");
 
 const formatRupiah = (value) => {
@@ -105,6 +109,25 @@ const normalizePackagePriceInputs = () => {
 const setMessage = (element, message, type = "") => {
   element.textContent = message;
   element.className = `form-message ${type ? `is-${type}` : ""}`;
+};
+
+const isStorageQuotaError = (error) => {
+  return error && (
+    error.name === "AWHStorageQuotaError" ||
+    error.name === "QuotaExceededError" ||
+    error.message === "AWH_STORAGE_QUOTA_EXCEEDED"
+  );
+};
+
+const handleStorageError = (error, element = formMessage) => {
+  if (isStorageQuotaError(error)) {
+    setMessage(element, "Data terlalu besar untuk disimpan di browser. Gunakan URL gambar, atau upload gambar yang lebih kecil/terkompres.", "error");
+    return true;
+  }
+
+  setMessage(element, "Data gagal disimpan. Cek console browser untuk detail error.", "error");
+  console.error(error);
+  return true;
 };
 
 const isLoggedIn = () => sessionStorage.getItem(ADMIN_SESSION_KEY) === "true";
@@ -215,20 +238,47 @@ const resetPriceForm = () => {
   setMessage(priceMessage, "");
 };
 
-const saveThemes = () => {
-  themes = window.AWHCatalogStore.save(themes);
-  renderAdmin();
+const saveThemes = (nextThemes = themes, messageElement = formMessage) => {
+  const previousThemes = themes;
+
+  try {
+    themes = window.AWHCatalogStore.save(nextThemes);
+    renderAdmin();
+    return true;
+  } catch (error) {
+    themes = previousThemes;
+    handleStorageError(error, messageElement);
+    return false;
+  }
 };
 
-const saveCategories = () => {
-  categories = window.AWHCatalogStore.saveCategories(categories);
-  populateCategories();
-  renderAdmin();
+const saveCategories = (nextCategories = categories, messageElement = categoryMessage) => {
+  const previousCategories = categories;
+
+  try {
+    categories = window.AWHCatalogStore.saveCategories(nextCategories);
+    populateCategories();
+    renderAdmin();
+    return true;
+  } catch (error) {
+    categories = previousCategories;
+    handleStorageError(error, messageElement);
+    return false;
+  }
 };
 
-const savePackages = () => {
-  pricePackages = window.AWHCatalogStore.savePackages(pricePackages);
-  renderAdmin();
+const savePackages = (nextPackages = pricePackages, messageElement = priceMessage) => {
+  const previousPackages = pricePackages;
+
+  try {
+    pricePackages = window.AWHCatalogStore.savePackages(nextPackages);
+    renderAdmin();
+    return true;
+  } catch (error) {
+    pricePackages = previousPackages;
+    handleStorageError(error, messageElement);
+    return false;
+  }
 };
 
 const renderStats = () => {
@@ -350,13 +400,56 @@ const renderAdmin = () => {
   renderPriceList();
 };
 
-const fileToDataUrl = (file) => {
+const fileToCompressedDataUrl = (file) => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
+    const image = new Image();
+
+    reader.onload = () => {
+      image.src = reader.result;
+    };
+
+    image.onload = () => {
+      const scale = Math.min(1, IMAGE_MAX_SIZE / Math.max(image.width, image.height));
+      const canvas = document.createElement("canvas");
+      const width = Math.round(image.width * scale);
+      const height = Math.round(image.height * scale);
+      const context = canvas.getContext("2d");
+
+      canvas.width = width;
+      canvas.height = height;
+      context.drawImage(image, 0, 0, width, height);
+      resolve(canvas.toDataURL("image/jpeg", IMAGE_QUALITY));
+    };
+
+    image.onerror = reject;
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
+};
+
+const uploadThemeImage = async (file) => {
+  const formData = new FormData();
+  formData.append("themeImage", file);
+
+  const response = await fetch(THEME_UPLOAD_ENDPOINT, {
+    method: "POST",
+    body: formData
+  });
+
+  const contentType = response.headers.get("content-type") || "";
+
+  if (!contentType.includes("application/json")) {
+    throw new Error("UPLOAD_ENDPOINT_NOT_AVAILABLE");
+  }
+
+  const result = await response.json();
+
+  if (!response.ok || !result.success || !result.path) {
+    throw new Error(result.message || "UPLOAD_FAILED");
+  }
+
+  return result.path;
 };
 
 loginForm.addEventListener("submit", (event) => {
@@ -449,9 +542,22 @@ themeImageInput.addEventListener("change", async () => {
     return;
   }
 
-  selectedImage = await fileToDataUrl(file);
-  themeImageUrlInput.value = "";
-  renderImagePreview(selectedImage);
+  try {
+    selectedImage = await uploadThemeImage(file);
+    themeImageUrlInput.value = "";
+    renderImagePreview(selectedImage);
+    setMessage(formMessage, "Gambar berhasil diupload ke folder thema.", "success");
+  } catch (error) {
+    try {
+      selectedImage = await fileToCompressedDataUrl(file);
+      themeImageUrlInput.value = "";
+      renderImagePreview(selectedImage);
+      setMessage(formMessage, "Server upload belum aktif, gambar disimpan sementara sebagai base64 terkompres.", "success");
+    } catch (fallbackError) {
+      selectedImage = "";
+      setMessage(formMessage, "Gambar gagal diproses. Coba gunakan gambar lain atau isi URL gambar.", "error");
+    }
+  }
 });
 
 themeImageUrlInput.addEventListener("input", () => {
@@ -504,14 +610,22 @@ themeForm.addEventListener("submit", (event) => {
   };
 
   if (editingId) {
-    themes = themes.map((theme) => theme.id === editingId ? themePayload : theme);
-    saveThemes();
+    const nextThemes = themes.map((theme) => theme.id === editingId ? themePayload : theme);
+
+    if (!saveThemes(nextThemes, formMessage)) {
+      return;
+    }
+
     resetForm();
     closeModal(themeModal);
     setMessage(formMessage, "Tema berhasil diperbarui.", "success");
   } else {
-    themes = [themePayload, ...themes];
-    saveThemes();
+    const nextThemes = [themePayload, ...themes];
+
+    if (!saveThemes(nextThemes, formMessage)) {
+      return;
+    }
+
     resetForm();
     closeModal(themeModal);
     setMessage(formMessage, "Tema baru berhasil ditambahkan.", "success");
@@ -538,8 +652,7 @@ themeList.addEventListener("click", (event) => {
       return;
     }
 
-    themes = themes.filter((item) => item.id !== themeId);
-    saveThemes();
+    saveThemes(themes.filter((item) => item.id !== themeId), formMessage);
     return;
   }
 
@@ -592,14 +705,23 @@ priceForm.addEventListener("submit", (event) => {
   };
 
   if (editingId) {
-    pricePackages = pricePackages.map((pricePackage) => pricePackage.id === editingId ? payload : pricePackage);
+    const nextPackages = pricePackages.map((pricePackage) => pricePackage.id === editingId ? payload : pricePackage);
+
+    if (!savePackages(nextPackages, priceMessage)) {
+      return;
+    }
+
     setMessage(priceMessage, "Harga berhasil diperbarui.", "success");
   } else {
-    pricePackages = [payload, ...pricePackages];
+    const nextPackages = [payload, ...pricePackages];
+
+    if (!savePackages(nextPackages, priceMessage)) {
+      return;
+    }
+
     setMessage(priceMessage, "Harga baru berhasil ditambahkan.", "success");
   }
 
-  savePackages();
   resetPriceForm();
   closeModal(priceModal);
 });
@@ -624,8 +746,7 @@ priceList.addEventListener("click", (event) => {
       return;
     }
 
-    pricePackages = pricePackages.filter((item) => item.id !== packageId);
-    savePackages();
+    savePackages(pricePackages.filter((item) => item.id !== packageId), priceMessage);
     return;
   }
 
@@ -669,14 +790,23 @@ categoryForm.addEventListener("submit", (event) => {
   };
 
   if (editingId) {
-    categories = categories.map((category) => category.id === editingId ? payload : category);
+    const nextCategories = categories.map((category) => category.id === editingId ? payload : category);
+
+    if (!saveCategories(nextCategories, categoryMessage)) {
+      return;
+    }
+
     setMessage(categoryMessage, "Kategori berhasil diperbarui.", "success");
   } else {
-    categories = [...categories, payload];
+    const nextCategories = [...categories, payload];
+
+    if (!saveCategories(nextCategories, categoryMessage)) {
+      return;
+    }
+
     setMessage(categoryMessage, "Kategori baru berhasil ditambahkan.", "success");
   }
 
-  saveCategories();
   resetCategoryForm();
   closeModal(categoryModal);
   setMessage(categoryMessage, editingId ? "Kategori berhasil diperbarui." : "Kategori baru berhasil ditambahkan.", "success");
@@ -712,12 +842,22 @@ categoryList.addEventListener("click", (event) => {
       return;
     }
 
-    categories = categories.filter((item) => item.id !== categoryId);
-    themes = themes.filter((theme) => theme.categoryId !== categoryId);
-    pricePackages = pricePackages.filter((pricePackage) => pricePackage.categoryId !== categoryId);
-    window.AWHCatalogStore.save(themes);
-    window.AWHCatalogStore.savePackages(pricePackages);
-    saveCategories();
+    const nextCategories = categories.filter((item) => item.id !== categoryId);
+    const nextThemes = themes.filter((theme) => theme.categoryId !== categoryId);
+    const nextPackages = pricePackages.filter((pricePackage) => pricePackage.categoryId !== categoryId);
+
+    if (!saveThemes(nextThemes, categoryMessage)) {
+      return;
+    }
+
+    if (!savePackages(nextPackages, categoryMessage)) {
+      return;
+    }
+
+    if (!saveCategories(nextCategories, categoryMessage)) {
+      return;
+    }
+
     resetCategoryForm();
     resetPriceForm();
     resetForm();

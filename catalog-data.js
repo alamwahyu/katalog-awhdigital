@@ -303,8 +303,15 @@ const normalizeCatalog = (catalog) => {
   return { categories, packages, themes };
 };
 
-const persistDraft = () => {
-  localStorage.setItem(AWH_CATALOG_DRAFT_KEY, JSON.stringify(catalogState));
+const persistDraft = (nextState = catalogState) => {
+  try {
+    localStorage.setItem(AWH_CATALOG_DRAFT_KEY, JSON.stringify(nextState));
+  } catch (error) {
+    const storageError = new Error("AWH_STORAGE_QUOTA_EXCEEDED");
+    storageError.name = "AWHStorageQuotaError";
+    storageError.cause = error;
+    throw storageError;
+  }
 };
 
 const loadJsonCatalog = async () => {
@@ -340,34 +347,37 @@ const loadCatalogPackages = () => catalogState.packages;
 const loadCatalogThemes = () => catalogState.themes;
 
 const saveCatalogThemes = (themes) => {
-  catalogState = normalizeCatalog({
+  const nextState = normalizeCatalog({
     categories: catalogState.categories,
     packages: catalogState.packages,
     themes
   });
-  persistDraft();
+  persistDraft(nextState);
+  catalogState = nextState;
   window.dispatchEvent(new CustomEvent("awhCatalogUpdated", { detail: catalogState.themes }));
   return catalogState.themes;
 };
 
 const saveCatalogCategories = (categories) => {
-  catalogState = normalizeCatalog({
+  const nextState = normalizeCatalog({
     categories,
     packages: catalogState.packages,
     themes: catalogState.themes
   });
-  persistDraft();
+  persistDraft(nextState);
+  catalogState = nextState;
   window.dispatchEvent(new CustomEvent("awhCategoriesUpdated", { detail: catalogState.categories }));
   return catalogState.categories;
 };
 
 const saveCatalogPackages = (packages) => {
-  catalogState = normalizeCatalog({
+  const nextState = normalizeCatalog({
     categories: catalogState.categories,
     packages,
     themes: catalogState.themes
   });
-  persistDraft();
+  persistDraft(nextState);
+  catalogState = nextState;
   window.dispatchEvent(new CustomEvent("awhPackagesUpdated", { detail: catalogState.packages }));
   return catalogState.packages;
 };
