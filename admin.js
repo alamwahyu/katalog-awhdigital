@@ -37,6 +37,7 @@ const categoryList = document.getElementById("category-list");
 const cancelCategoryEditButton = document.getElementById("cancel-category-edit");
 const openThemeFormButton = document.getElementById("open-theme-form");
 const openCategoryFormButton = document.getElementById("open-category-form");
+const downloadJsonButton = document.getElementById("download-json");
 const themeModal = document.getElementById("theme-modal");
 const categoryModal = document.getElementById("category-modal");
 
@@ -297,6 +298,16 @@ document.addEventListener("keydown", (event) => {
   }
 });
 
+downloadJsonButton.addEventListener("click", () => {
+  const blob = new Blob([window.AWHCatalogStore.exportJson()], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "catalog.json";
+  link.click();
+  URL.revokeObjectURL(url);
+});
+
 themeImageInput.addEventListener("change", async () => {
   const file = themeImageInput.files[0];
 
@@ -506,10 +517,12 @@ cancelCategoryEditButton.addEventListener("click", () => {
   closeModal(categoryModal);
 });
 
-populateCategories();
+window.AWHCatalogStore.ready.then(() => {
+  populateCategories();
 
-if (isLoggedIn()) {
-  showDashboard();
-} else {
-  showLogin();
-}
+  if (isLoggedIn()) {
+    showDashboard();
+  } else {
+    showLogin();
+  }
+});

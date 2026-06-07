@@ -239,13 +239,7 @@ document.addEventListener("keydown", (event) => {
   }
 });
 
-window.addEventListener("storage", (event) => {
-  if (event.key === window.AWHCatalogStore.themeKey || event.key === window.AWHCatalogStore.categoryKey) {
-    renderCatalog();
-  }
-});
-
 window.addEventListener("awhCatalogUpdated", renderCatalog);
 window.addEventListener("awhCategoriesUpdated", renderCatalog);
 
-renderCatalog();
+window.AWHCatalogStore.ready.then(renderCatalog);
