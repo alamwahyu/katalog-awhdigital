@@ -88,6 +88,24 @@ img {
   font-weight: 800;
 }
 
+.brand-type {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  line-height: 1;
+}
+
+.brand-type strong,
+.brand-type em {
+  color: var(--brown);
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 1.34rem;
+  font-weight: 700;
+  font-style: normal;
+  letter-spacing: 0.04em;
+  text-transform: none;
+}
+
 .brand-mark {
   display: inline-flex;
   width: 48px;
@@ -137,6 +155,49 @@ img {
   color: var(--white);
   background: linear-gradient(135deg, var(--brown), var(--soft-gold));
   box-shadow: 0 8px 18px rgba(109, 82, 52, 0.18);
+}
+
+.menu-toggle {
+  display: none;
+  width: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(201, 161, 90, 0.32);
+  border-radius: 50%;
+  padding: 0;
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: 0 8px 18px rgba(83, 60, 35, 0.1);
+  cursor: pointer;
+}
+
+.menu-toggle span {
+  position: absolute;
+  width: 18px;
+  height: 2px;
+  border-radius: 999px;
+  background: var(--brown);
+  transition: transform 180ms ease, opacity 180ms ease;
+}
+
+.menu-toggle span:nth-child(1) {
+  transform: translateY(-6px);
+}
+
+.menu-toggle span:nth-child(3) {
+  transform: translateY(6px);
+}
+
+.menu-toggle.is-open span:nth-child(1) {
+  transform: rotate(45deg);
+}
+
+.menu-toggle.is-open span:nth-child(2) {
+  opacity: 0;
+}
+
+.menu-toggle.is-open span:nth-child(3) {
+  transform: rotate(-45deg);
 }
 
 .hero {
@@ -797,6 +858,22 @@ h2 {
   line-height: 1;
 }
 
+.package-price-detail {
+  display: grid;
+  gap: 7px;
+}
+
+.package-discount {
+  display: inline-flex;
+  width: fit-content;
+  border-radius: 999px;
+  padding: 6px 10px;
+  color: #8b2f20;
+  background: rgba(180, 73, 52, 0.1);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
 .features {
   display: grid;
   gap: 10px;
@@ -1152,6 +1229,7 @@ h2 {
   }
 
   .nav-inner {
+    position: relative;
     align-items: center;
   }
 
@@ -1160,8 +1238,39 @@ h2 {
     height: 42px;
   }
 
+  .brand-type strong,
+  .brand-type em {
+    font-size: 1.15rem;
+  }
+
+  .menu-toggle {
+    display: inline-flex;
+  }
+
   .nav-links {
-    display: none;
+    position: absolute;
+    top: calc(100% + 12px);
+    left: 0;
+    right: 0;
+    display: grid;
+    gap: 8px;
+    padding: 12px;
+    border-radius: var(--radius);
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-8px);
+    transition: opacity 180ms ease, transform 180ms ease;
+  }
+
+  .nav-links.is-open {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0);
+  }
+
+  .nav-links a {
+    width: 100%;
+    padding: 10px 12px;
   }
 
   .hero {

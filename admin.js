@@ -21,8 +21,10 @@ const themeDiscountInput = document.getElementById("theme-discount");
 const themeOldPriceInput = document.getElementById("theme-old-price");
 const themePreviewLinkInput = document.getElementById("theme-preview-link");
 const themeBestSellerInput = document.getElementById("theme-best-seller");
+const themeActiveInput = document.getElementById("theme-active");
 const imagePreview = document.getElementById("image-preview");
 const filterCategoryInput = document.getElementById("filter-category");
+const themeSearchInput = document.getElementById("theme-search");
 const themeList = document.getElementById("theme-list");
 const adminStats = document.getElementById("admin-stats");
 const cancelEditButton = document.getElementById("cancel-edit");
@@ -35,15 +37,36 @@ const categoryDescriptionInput = document.getElementById("category-description")
 const categoryMessage = document.getElementById("category-message");
 const categoryList = document.getElementById("category-list");
 const cancelCategoryEditButton = document.getElementById("cancel-category-edit");
+const priceForm = document.getElementById("price-form");
+const priceFormTitle = document.getElementById("price-form-title");
+const priceIdInput = document.getElementById("price-id");
+const priceNameInput = document.getElementById("price-name");
+const priceCategoryInput = document.getElementById("price-category");
+const priceBadgeInput = document.getElementById("price-badge");
+const priceNoteInput = document.getElementById("price-note");
+const priceValueInput = document.getElementById("price-value");
+const priceDiscountInput = document.getElementById("price-discount");
+const priceOldValueInput = document.getElementById("price-old-value");
+const priceFeaturesInput = document.getElementById("price-features");
+const priceFeaturedInput = document.getElementById("price-featured");
+const priceActiveInput = document.getElementById("price-active");
+const priceMessage = document.getElementById("price-message");
+const priceList = document.getElementById("price-list");
+const cancelPriceEditButton = document.getElementById("cancel-price-edit");
 const openThemeFormButton = document.getElementById("open-theme-form");
 const openCategoryFormButton = document.getElementById("open-category-form");
+const openPriceFormButton = document.getElementById("open-price-form");
 const downloadJsonButton = document.getElementById("download-json");
+const adminMenuToggle = document.querySelector(".admin-menu-toggle");
+const adminHeaderActions = document.getElementById("admin-header-actions");
 const themeModal = document.getElementById("theme-modal");
 const categoryModal = document.getElementById("category-modal");
+const priceModal = document.getElementById("price-modal");
 
 let themes = [];
 let selectedImage = "";
 let categories = [];
+let pricePackages = [];
 
 const onlyDigits = (value) => value.replace(/[^\d]/g, "");
 
@@ -67,10 +90,16 @@ const formatDiscount = (value) => {
   return `${digits}%`;
 };
 
-const normalizePriceInputs = () => {
+const normalizeThemePriceInputs = () => {
   themePriceInput.value = formatRupiah(themePriceInput.value);
   themeOldPriceInput.value = formatRupiah(themeOldPriceInput.value);
   themeDiscountInput.value = formatDiscount(themeDiscountInput.value);
+};
+
+const normalizePackagePriceInputs = () => {
+  priceValueInput.value = formatRupiah(priceValueInput.value);
+  priceOldValueInput.value = formatRupiah(priceOldValueInput.value);
+  priceDiscountInput.value = formatDiscount(priceDiscountInput.value);
 };
 
 const setMessage = (element, message, type = "") => {
@@ -88,9 +117,30 @@ const openModal = (modal) => {
 const closeModal = (modal) => {
   modal.hidden = true;
 
-  if (themeModal.hidden && categoryModal.hidden) {
+  if (themeModal.hidden && categoryModal.hidden && priceModal.hidden) {
     document.body.classList.remove("modal-open");
   }
+};
+
+const closeAdminMenu = () => {
+  if (!adminMenuToggle || !adminHeaderActions) {
+    return;
+  }
+
+  adminMenuToggle.classList.remove("is-open");
+  adminHeaderActions.classList.remove("is-open");
+  adminMenuToggle.setAttribute("aria-expanded", "false");
+};
+
+const toggleAdminMenu = () => {
+  if (!adminMenuToggle || !adminHeaderActions) {
+    return;
+  }
+
+  const willOpen = !adminHeaderActions.classList.contains("is-open");
+  adminMenuToggle.classList.toggle("is-open", willOpen);
+  adminHeaderActions.classList.toggle("is-open", willOpen);
+  adminMenuToggle.setAttribute("aria-expanded", String(willOpen));
 };
 
 const showDashboard = () => {
@@ -99,6 +149,7 @@ const showDashboard = () => {
   document.body.classList.add("admin-dashboard-active");
   categories = window.AWHCatalogStore ? window.AWHCatalogStore.loadCategories() : [];
   themes = window.AWHCatalogStore ? window.AWHCatalogStore.load() : [];
+  pricePackages = window.AWHCatalogStore ? window.AWHCatalogStore.loadPackages() : [];
   populateCategories();
   renderAdmin();
 };
@@ -122,6 +173,7 @@ const populateCategories = () => {
     .join("");
 
   themeCategoryInput.innerHTML = categoryOptions;
+  priceCategoryInput.innerHTML = categoryOptions;
   filterCategoryInput.innerHTML = `<option value="all">Semua Kategori</option>${categoryOptions}`;
 };
 
@@ -155,6 +207,14 @@ const resetCategoryForm = () => {
   setMessage(categoryMessage, "");
 };
 
+const resetPriceForm = () => {
+  priceForm.reset();
+  priceIdInput.value = "";
+  priceActiveInput.checked = true;
+  priceFormTitle.textContent = "Tambah Harga";
+  setMessage(priceMessage, "");
+};
+
 const saveThemes = () => {
   themes = window.AWHCatalogStore.save(themes);
   renderAdmin();
@@ -166,9 +226,15 @@ const saveCategories = () => {
   renderAdmin();
 };
 
+const savePackages = () => {
+  pricePackages = window.AWHCatalogStore.savePackages(pricePackages);
+  renderAdmin();
+};
+
 const renderStats = () => {
   const bestSellerCount = themes.filter((theme) => theme.bestSeller).length;
-  const activeCategories = categories.length;
+  const inactiveCount = themes.filter((theme) => theme.active === false).length;
+  const activePackageCount = pricePackages.filter((pricePackage) => pricePackage.active !== false).length;
 
   adminStats.innerHTML = `
     <div class="stat-card">
@@ -180,20 +246,39 @@ const renderStats = () => {
       <span>Best Seller</span>
     </div>
     <div class="stat-card">
-      <strong>${activeCategories}</strong>
-      <span>Kategori Aktif</span>
+      <strong>${inactiveCount}</strong>
+      <span>Tema Inactive</span>
+    </div>
+    <div class="stat-card">
+      <strong>${activePackageCount}</strong>
+      <span>Harga Aktif</span>
     </div>
   `;
 };
 
 const renderThemeList = () => {
   const selectedCategory = filterCategoryInput.value;
-  const filteredThemes = selectedCategory === "all"
+  const searchQuery = themeSearchInput.value.trim().toLowerCase();
+  const categoryFilteredThemes = selectedCategory === "all"
     ? themes
     : themes.filter((theme) => theme.categoryId === selectedCategory);
+  const filteredThemes = !searchQuery
+    ? categoryFilteredThemes
+    : categoryFilteredThemes.filter((theme) => {
+      const searchableText = [
+        theme.name,
+        theme.themeBadge,
+        getCategoryLabel(theme.categoryId),
+        theme.price,
+        theme.oldPrice,
+        theme.discount
+      ].join(" ").toLowerCase();
+
+      return searchableText.includes(searchQuery);
+    });
 
   if (!filteredThemes.length) {
-    themeList.innerHTML = '<div class="empty-state">Belum ada tema pada kategori ini.</div>';
+    themeList.innerHTML = '<div class="empty-state">Tidak ada tema yang cocok dengan filter saat ini.</div>';
     return;
   }
 
@@ -207,6 +292,7 @@ const renderThemeList = () => {
           <span>${getCategoryLabel(theme.categoryId)}</span>
           <span>${theme.price}</span>
           ${theme.discount ? `<span>Diskon ${theme.discount}</span>` : ""}
+          <span>${theme.active === false ? "Inactive" : "Aktif"}</span>
           ${theme.bestSeller ? "<span>Best Seller</span>" : ""}
         </div>
       </div>
@@ -237,10 +323,31 @@ const renderCategoryList = () => {
   }).join("");
 };
 
+const renderPriceList = () => {
+  if (!pricePackages.length) {
+    priceList.innerHTML = '<div class="empty-state">Belum ada paket harga.</div>';
+    return;
+  }
+
+  priceList.innerHTML = pricePackages.map((pricePackage) => `
+    <article class="price-row" data-id="${pricePackage.id}">
+      <div>
+        <h3>${pricePackage.name}</h3>
+        <p>${getCategoryLabel(pricePackage.categoryId)} · ${pricePackage.price} · ${pricePackage.active === false ? "Inactive" : "Aktif"}${pricePackage.featured ? " · Favorit" : ""}</p>
+      </div>
+      <div class="price-actions">
+        <button type="button" data-price-action="edit">Edit</button>
+        <button type="button" class="danger" data-price-action="delete">Delete</button>
+      </div>
+    </article>
+  `).join("");
+};
+
 const renderAdmin = () => {
   renderStats();
   renderThemeList();
   renderCategoryList();
+  renderPriceList();
 };
 
 const fileToDataUrl = (file) => {
@@ -271,34 +378,60 @@ loginForm.addEventListener("submit", (event) => {
 logoutButton.addEventListener("click", () => {
   sessionStorage.removeItem(ADMIN_SESSION_KEY);
   resetForm();
+  resetPriceForm();
+  closeAdminMenu();
   showLogin();
+});
+
+if (adminMenuToggle) {
+  adminMenuToggle.addEventListener("click", toggleAdminMenu);
+}
+
+document.addEventListener("click", (event) => {
+  const isHeaderClick = event.target.closest(".admin-header");
+
+  if (!isHeaderClick) {
+    closeAdminMenu();
+  }
 });
 
 openThemeFormButton.addEventListener("click", () => {
   resetForm();
+  closeAdminMenu();
   openModal(themeModal);
 });
 
 openCategoryFormButton.addEventListener("click", () => {
   resetCategoryForm();
+  closeAdminMenu();
   openModal(categoryModal);
+});
+
+openPriceFormButton.addEventListener("click", () => {
+  resetPriceForm();
+  closeAdminMenu();
+  openModal(priceModal);
 });
 
 document.querySelectorAll("[data-close-modal]").forEach((button) => {
   button.addEventListener("click", () => {
     closeModal(themeModal);
     closeModal(categoryModal);
+    closeModal(priceModal);
   });
 });
 
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape") {
+    closeAdminMenu();
     closeModal(themeModal);
     closeModal(categoryModal);
+    closeModal(priceModal);
   }
 });
 
 downloadJsonButton.addEventListener("click", () => {
+  closeAdminMenu();
   const blob = new Blob([window.AWHCatalogStore.exportJson()], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
@@ -327,7 +460,7 @@ themeImageUrlInput.addEventListener("input", () => {
   renderImagePreview(themeImageUrlInput.value.trim());
 });
 
-[themePriceInput, themeOldPriceInput].forEach((input) => {
+[themePriceInput, themeOldPriceInput, priceValueInput, priceOldValueInput].forEach((input) => {
   input.addEventListener("blur", () => {
     input.value = formatRupiah(input.value);
   });
@@ -335,6 +468,10 @@ themeImageUrlInput.addEventListener("input", () => {
 
 themeDiscountInput.addEventListener("blur", () => {
   themeDiscountInput.value = formatDiscount(themeDiscountInput.value);
+});
+
+priceDiscountInput.addEventListener("blur", () => {
+  priceDiscountInput.value = formatDiscount(priceDiscountInput.value);
 });
 
 themeForm.addEventListener("submit", (event) => {
@@ -345,7 +482,7 @@ themeForm.addEventListener("submit", (event) => {
   const imageUrl = themeImageUrlInput.value.trim();
   const finalImage = selectedImage || imageUrl || (existingTheme ? existingTheme.image : "");
 
-  normalizePriceInputs();
+  normalizeThemePriceInputs();
 
   if (!finalImage) {
     setMessage(formMessage, "Upload gambar tema atau isi URL gambar terlebih dahulu.", "error");
@@ -362,6 +499,7 @@ themeForm.addEventListener("submit", (event) => {
     price: themePriceInput.value.trim(),
     discount: themeDiscountInput.value.trim(),
     previewLink: themePreviewLinkInput.value.trim(),
+    active: themeActiveInput.checked,
     bestSeller: themeBestSellerInput.checked
   };
 
@@ -415,11 +553,96 @@ themeList.addEventListener("click", (event) => {
   themePreviewLinkInput.value = theme.previewLink;
   themeImageUrlInput.value = theme.image.startsWith("data:") ? "" : theme.image;
   themeBestSellerInput.checked = theme.bestSeller;
+  themeActiveInput.checked = theme.active !== false;
   selectedImage = "";
   formTitle.textContent = "Edit Tema";
   renderImagePreview(theme.image);
   setMessage(formMessage, "Mode edit aktif. Upload gambar baru hanya jika ingin mengganti gambar.", "success");
   openModal(themeModal);
+});
+
+priceForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+
+  normalizePackagePriceInputs();
+
+  const editingId = priceIdInput.value;
+  const features = priceFeaturesInput.value
+    .split(/\n+/)
+    .map((feature) => feature.trim())
+    .filter(Boolean);
+
+  if (!features.length) {
+    setMessage(priceMessage, "Isi minimal satu fitur paket.", "error");
+    return;
+  }
+
+  const payload = {
+    id: editingId || `package-${Date.now()}`,
+    name: priceNameInput.value.trim(),
+    badge: priceBadgeInput.value.trim(),
+    categoryId: priceCategoryInput.value,
+    note: priceNoteInput.value.trim(),
+    oldPrice: priceOldValueInput.value.trim(),
+    price: priceValueInput.value.trim(),
+    discount: priceDiscountInput.value.trim(),
+    features,
+    active: priceActiveInput.checked,
+    featured: priceFeaturedInput.checked
+  };
+
+  if (editingId) {
+    pricePackages = pricePackages.map((pricePackage) => pricePackage.id === editingId ? payload : pricePackage);
+    setMessage(priceMessage, "Harga berhasil diperbarui.", "success");
+  } else {
+    pricePackages = [payload, ...pricePackages];
+    setMessage(priceMessage, "Harga baru berhasil ditambahkan.", "success");
+  }
+
+  savePackages();
+  resetPriceForm();
+  closeModal(priceModal);
+});
+
+priceList.addEventListener("click", (event) => {
+  const actionButton = event.target.closest("[data-price-action]");
+
+  if (!actionButton) {
+    return;
+  }
+
+  const row = actionButton.closest(".price-row");
+  const packageId = row.dataset.id;
+  const pricePackage = pricePackages.find((item) => item.id === packageId);
+
+  if (!pricePackage) {
+    return;
+  }
+
+  if (actionButton.dataset.priceAction === "delete") {
+    if (!confirm(`Hapus paket harga "${pricePackage.name}"?`)) {
+      return;
+    }
+
+    pricePackages = pricePackages.filter((item) => item.id !== packageId);
+    savePackages();
+    return;
+  }
+
+  priceIdInput.value = pricePackage.id;
+  priceNameInput.value = pricePackage.name;
+  priceCategoryInput.value = pricePackage.categoryId;
+  priceBadgeInput.value = pricePackage.badge || "";
+  priceNoteInput.value = pricePackage.note || "";
+  priceValueInput.value = pricePackage.price;
+  priceDiscountInput.value = pricePackage.discount;
+  priceOldValueInput.value = pricePackage.oldPrice;
+  priceFeaturesInput.value = pricePackage.features.join("\n");
+  priceFeaturedInput.checked = pricePackage.featured;
+  priceActiveInput.checked = pricePackage.active !== false;
+  priceFormTitle.textContent = "Edit Harga";
+  setMessage(priceMessage, "Mode edit harga aktif.", "success");
+  openModal(priceModal);
 });
 
 categoryForm.addEventListener("submit", (event) => {
@@ -491,9 +714,12 @@ categoryList.addEventListener("click", (event) => {
 
     categories = categories.filter((item) => item.id !== categoryId);
     themes = themes.filter((theme) => theme.categoryId !== categoryId);
+    pricePackages = pricePackages.filter((pricePackage) => pricePackage.categoryId !== categoryId);
     window.AWHCatalogStore.save(themes);
+    window.AWHCatalogStore.savePackages(pricePackages);
     saveCategories();
     resetCategoryForm();
+    resetPriceForm();
     resetForm();
     return;
   }
@@ -508,6 +734,7 @@ categoryList.addEventListener("click", (event) => {
 });
 
 filterCategoryInput.addEventListener("change", renderThemeList);
+themeSearchInput.addEventListener("input", renderThemeList);
 cancelEditButton.addEventListener("click", () => {
   resetForm();
   closeModal(themeModal);
@@ -515,6 +742,10 @@ cancelEditButton.addEventListener("click", () => {
 cancelCategoryEditButton.addEventListener("click", () => {
   resetCategoryForm();
   closeModal(categoryModal);
+});
+cancelPriceEditButton.addEventListener("click", () => {
+  resetPriceForm();
+  closeModal(priceModal);
 });
 
 window.AWHCatalogStore.ready.then(() => {

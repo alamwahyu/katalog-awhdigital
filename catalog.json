@@ -31,6 +31,127 @@
       "description": "Template non wedding untuk aqiqah, tasyakuran, ulang tahun, dan acara keluarga lainnya."
     }
   ],
+  "packages": [
+    {
+      "id": "package-classic",
+      "name": "Paket Premium",
+      "badge": "Best Starter",
+      "categoryId": "classic",
+      "note": "Kategori Tema Classic & Etnik",
+      "oldPrice": "Rp189.000",
+      "price": "Rp109.000",
+      "discount": "40%",
+      "features": [
+        "Custom Nama Tamu Unlimited",
+        "Love Story",
+        "Amplop/Kado Digital",
+        "Gallery Photo",
+        "Hitung Mundur Acara",
+        "Kolom Ucapan",
+        "Navigasi Lokasi",
+        "Quotes Pernikahan",
+        "Live Streaming",
+        "Musik Bebas Request"
+      ],
+      "active": true,
+      "featured": false
+    },
+    {
+      "id": "package-floral",
+      "name": "Paket Premium",
+      "badge": "Minimalis",
+      "categoryId": "floral",
+      "note": "Kategori Tema Floral & Simple",
+      "oldPrice": "Rp189.000",
+      "price": "Rp109.000",
+      "discount": "40%",
+      "features": [
+        "Custom Nama Tamu Unlimited",
+        "Love Story",
+        "Amplop/Kado Digital",
+        "Gallery Photo",
+        "Hitung Mundur Acara",
+        "Kolom Ucapan",
+        "Navigasi Lokasi",
+        "Quotes Pernikahan",
+        "Live Streaming",
+        "Musik Bebas Request"
+      ],
+      "active": true,
+      "featured": false
+    },
+    {
+      "id": "package-special",
+      "name": "Spesial Design",
+      "badge": "Favorit",
+      "categoryId": "special",
+      "note": "Kategori Tema Special Design",
+      "oldPrice": "Rp249.000",
+      "price": "Rp149.000",
+      "discount": "40%",
+      "features": [
+        "Custom Nama Tamu Unlimited",
+        "Love Story",
+        "Amplop/Kado Digital",
+        "Gallery Photo",
+        "Hitung Mundur Acara",
+        "Kolom Ucapan",
+        "Navigasi Lokasi",
+        "Quotes Pernikahan",
+        "Live Streaming",
+        "Musik Bebas Request"
+      ],
+      "active": true,
+      "featured": true
+    },
+    {
+      "id": "package-motion",
+      "name": "3D Motion",
+      "badge": "Interaktif",
+      "categoryId": "motion",
+      "note": "Kategori Tema 3D Motion",
+      "oldPrice": "Rp299.000",
+      "price": "Rp189.000",
+      "discount": "35%",
+      "features": [
+        "Custom Nama Tamu Unlimited",
+        "Love Story",
+        "Amplop/Kado Digital",
+        "Gallery Photo",
+        "Hitung Mundur Acara",
+        "Kolom Ucapan",
+        "Navigasi Lokasi",
+        "Quotes Pernikahan",
+        "Live Streaming",
+        "Musik Bebas Request"
+      ],
+      "active": true,
+      "featured": false
+    },
+    {
+      "id": "package-aqiqah",
+      "name": "Non Wedding",
+      "badge": "Family Event",
+      "categoryId": "aqiqah",
+      "note": "Kategori Tema Non Wedding",
+      "oldPrice": "Rp159.000",
+      "price": "Rp99.000",
+      "discount": "38%",
+      "features": [
+        "Custom Nama Tamu Unlimited",
+        "Amplop/Kado Digital",
+        "Gallery Photo",
+        "Hitung Mundur Acara",
+        "Kolom Ucapan",
+        "Navigasi Lokasi",
+        "Quotes Acara",
+        "Live Streaming",
+        "Musik Bebas Request"
+      ],
+      "active": true,
+      "featured": false
+    }
+  ],
   "themes": [
     {
       "id": "special-01",
@@ -42,6 +163,7 @@
       "price": "Rp149.000",
       "discount": "40%",
       "previewLink": "",
+      "active": true,
       "bestSeller": true
     },
     {
@@ -54,6 +176,7 @@
       "price": "Rp149.000",
       "discount": "40%",
       "previewLink": "",
+      "active": true,
       "bestSeller": false
     },
     {
@@ -66,6 +189,7 @@
       "price": "Rp149.000",
       "discount": "40%",
       "previewLink": "",
+      "active": true,
       "bestSeller": true
     },
     {
@@ -78,6 +202,7 @@
       "price": "Rp149.000",
       "discount": "40%",
       "previewLink": "",
+      "active": true,
       "bestSeller": false
     },
     {
@@ -90,6 +215,7 @@
       "price": "Rp189.000",
       "discount": "35%",
       "previewLink": "",
+      "active": true,
       "bestSeller": true
     },
     {
@@ -102,6 +228,7 @@
       "price": "Rp189.000",
       "discount": "35%",
       "previewLink": "",
+      "active": true,
       "bestSeller": false
     },
     {
@@ -114,6 +241,7 @@
       "price": "Rp109.000",
       "discount": "40%",
       "previewLink": "",
+      "active": true,
       "bestSeller": true
     },
     {
@@ -126,6 +254,7 @@
       "price": "Rp109.000",
       "discount": "40%",
       "previewLink": "",
+      "active": true,
       "bestSeller": false
     },
     {
@@ -138,6 +267,7 @@
       "price": "Rp109.000",
       "discount": "40%",
       "previewLink": "",
+      "active": true,
       "bestSeller": true
     },
     {
@@ -150,6 +280,7 @@
       "price": "Rp109.000",
       "discount": "40%",
       "previewLink": "",
+      "active": true,
       "bestSeller": false
     },
     {
@@ -162,6 +293,7 @@
       "price": "Rp99.000",
       "discount": "38%",
       "previewLink": "",
+      "active": true,
       "bestSeller": true
     },
     {
@@ -174,6 +306,7 @@
       "price": "Rp99.000",
       "discount": "38%",
       "previewLink": "",
+      "active": true,
       "bestSeller": false
     }
   ]

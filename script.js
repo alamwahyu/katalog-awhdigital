@@ -19,7 +19,13 @@ const getCategoryLabel = (categoryId) => {
 const createOrderUrl = (theme, themeCode) => {
   const category = getCategoryLabel(theme.categoryId);
   const message = encodeURIComponent(`Halo AWH Digital, saya ingin order ${theme.name} (${themeCode}) kategori ${category}.`);
-  return `https://wa.me/6281234567890?text=${message}`;
+  return `https://wa.me/6281383142798?text=${message}`;
+};
+
+const createPackageOrderUrl = (pricePackage) => {
+  const category = getCategoryLabel(pricePackage.categoryId);
+  const message = encodeURIComponent(`Halo AWH Digital, saya ingin pesan ${pricePackage.name} kategori ${category} dengan harga ${pricePackage.price}.`);
+  return `https://wa.me/6281383142798?text=${message}`;
 };
 
 const renderThemeCard = (theme, index) => {
@@ -99,6 +105,33 @@ const observeRevealElements = () => {
 };
 
 const navLinks = document.querySelectorAll(".nav-links a[href^='#']");
+const menuToggle = document.querySelector(".menu-toggle");
+const mainNavLinks = document.getElementById("main-nav-links");
+
+const closeMobileMenu = () => {
+  if (!menuToggle || !mainNavLinks) {
+    return;
+  }
+
+  menuToggle.classList.remove("is-open");
+  mainNavLinks.classList.remove("is-open");
+  menuToggle.setAttribute("aria-expanded", "false");
+};
+
+const toggleMobileMenu = () => {
+  if (!menuToggle || !mainNavLinks) {
+    return;
+  }
+
+  const willOpen = !mainNavLinks.classList.contains("is-open");
+  menuToggle.classList.toggle("is-open", willOpen);
+  mainNavLinks.classList.toggle("is-open", willOpen);
+  menuToggle.setAttribute("aria-expanded", String(willOpen));
+};
+
+if (menuToggle) {
+  menuToggle.addEventListener("click", toggleMobileMenu);
+}
 
 const setActiveNav = (sectionId) => {
   navLinks.forEach((link) => {
@@ -153,6 +186,7 @@ const initSectionScrollSpy = () => {
     link.addEventListener("click", () => {
       const targetId = link.getAttribute("href").slice(1);
       setActiveNav(targetId);
+      closeMobileMenu();
     });
   });
 
@@ -210,6 +244,52 @@ const renderCategorySections = (categories, themes) => {
   });
 };
 
+const renderPricing = () => {
+  const pricingGrid = document.getElementById("pricing-grid");
+  const packages = window.AWHCatalogStore.loadPackages().filter((pricePackage) => pricePackage.active !== false);
+
+  if (!pricingGrid) {
+    return;
+  }
+
+  if (!packages.length) {
+    pricingGrid.innerHTML = `
+      <div class="empty-catalog">
+        <h3>Belum ada paket harga aktif</h3>
+        <p>Tambahkan atau aktifkan paket harga melalui halaman admin.</p>
+      </div>
+    `;
+    observeRevealElements();
+    return;
+  }
+
+  pricingGrid.innerHTML = packages.map((pricePackage) => {
+    const category = getCategoryLabel(pricePackage.categoryId);
+    const note = pricePackage.note || `Kategori Tema ${category}`;
+    const features = pricePackage.features.map((feature) => `<li>${feature}</li>`).join("");
+    const orderUrl = createPackageOrderUrl(pricePackage);
+
+    return `
+      <article class="price-card ${pricePackage.featured ? "featured" : ""} reveal">
+        <div>
+          ${pricePackage.badge ? `<span class="package-badge">${pricePackage.badge}</span>` : ""}
+          <h3 class="package-name">${pricePackage.name}</h3>
+          <p class="package-note">${note}</p>
+        </div>
+        <div class="package-price-detail">
+          ${pricePackage.oldPrice ? `<span class="old-price">${pricePackage.oldPrice}</span>` : ""}
+          <p class="price">${pricePackage.price}</p>
+          ${pricePackage.discount ? `<span class="package-discount">Diskon ${pricePackage.discount}</span>` : ""}
+        </div>
+        <ul class="features">${features}</ul>
+        <a class="cta-button" href="${orderUrl}" target="_blank" rel="noopener">Pesan Sekarang</a>
+      </article>
+    `;
+  }).join("");
+
+  observeRevealElements();
+};
+
 const showCategory = (categoryId, shouldScroll = true) => {
   const targetSection = document.getElementById(`category-${categoryId}`);
   const filter = document.getElementById("catalog-filter");
@@ -239,7 +319,7 @@ const showCategory = (categoryId, shouldScroll = true) => {
 
 const renderCatalog = () => {
   const categories = getCategories();
-  const themes = window.AWHCatalogStore.load();
+  const themes = window.AWHCatalogStore.load().filter((theme) => theme.active !== false);
 
   if (!categories.length) {
     return;
@@ -252,10 +332,17 @@ const renderCatalog = () => {
   renderCategoryControls(categories);
   renderCategorySections(categories, themes);
   showCategory(activeCategoryId, false);
+  renderPricing();
   observeRevealElements();
 };
 
 document.addEventListener("click", (event) => {
+  const isNavClick = event.target.closest(".site-nav");
+
+  if (!isNavClick) {
+    closeMobileMenu();
+  }
+
   const categoryButton = event.target.closest(".nav-button[data-category-id]");
 
   if (categoryButton) {
@@ -307,6 +394,10 @@ document.querySelectorAll("[data-close-preview]").forEach((button) => {
 });
 
 document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") {
+    closeMobileMenu();
+  }
+
   if (event.key === "Escape" && previewModal.classList.contains("is-open")) {
     closePreview();
   }
@@ -314,6 +405,7 @@ document.addEventListener("keydown", (event) => {
 
 window.addEventListener("awhCatalogUpdated", renderCatalog);
 window.addEventListener("awhCategoriesUpdated", renderCatalog);
+window.addEventListener("awhPackagesUpdated", renderPricing);
 
 window.AWHCatalogStore.ready.then(() => {
   renderCatalog();

@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="description" content="AWH Digital menyediakan jasa pembuatan undangan digital elegan dengan katalog tema wedding, adat, floral, 3D motion, dan non wedding." />
   <title>AWH Digital | Katalog Undangan Digital</title>
+  <link rel="icon" type="image/png" href="images/logo.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -18,9 +19,16 @@
           <span class="brand-mark">
             <img src="images/logo.png" alt="Logo AWH Digital" />
           </span>
-          <span>AWH Digital</span>
+          <span class="brand-type">
+            <strong>AWH</strong><em>Digital</em>
+          </span>
         </a>
-        <div class="nav-links">
+        <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="main-nav-links" aria-label="Buka menu navigasi">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+        <div class="nav-links" id="main-nav-links">
           <a href="#katalog">Katalog</a>
           <a href="#pricelist">Harga</a>
           <a href="#review">Review</a>
@@ -37,7 +45,7 @@
           <h1>Undangan Digital Elegan untuk Momen Spesial Anda</h1>
           <p class="hero-subtitle">Pilih tema, kirim data acara, lalu undangan website siap dibagikan ke tamu melalui WhatsApp, Instagram, atau media sosial lainnya.</p>
           <div class="hero-actions">
-            <a class="cta-button primary-cta" href="https://wa.me/6281234567890" target="_blank" rel="noopener">Pesan via WhatsApp</a>
+            <a class="cta-button primary-cta" href="https://wa.me/6281383142798" target="_blank" rel="noopener">Pesan via WhatsApp</a>
             <a class="nav-button hero-link" href="#katalog">Lihat Katalog</a>
           </div>
           <dl class="hero-stats" aria-label="Keunggulan AWH Digital">
@@ -117,73 +125,7 @@
             <p>Pilih paket sesuai kebutuhan acara. Semua paket sudah termasuk fitur utama undangan digital dan konsultasi awal.</p>
           </div>
 
-          <div class="pricing-grid">
-            <article class="price-card reveal">
-              <div>
-                <span class="package-badge">Best Starter</span>
-                <h3 class="package-name">Paket Premium</h3>
-                <p class="package-note">Kategori Tema Floral / Classic</p>
-              </div>
-              <p class="price">Rp109.000</p>
-              <ul class="features">
-                <li>Custom Nama Tamu Unlimited</li>
-                <li>Love Story</li>
-                <li>Amplop/Kado Digital</li>
-                <li>Gallery Photo</li>
-                <li>Hitung Mundur Acara</li>
-                <li>Kolom Ucapan</li>
-                <li>Navigasi Lokasi</li>
-                <li>Quotes Pernikahan</li>
-                <li>Live Streaming</li>
-                <li>Musik Bebas Request</li>
-              </ul>
-              <a class="cta-button" href="https://wa.me/6281234567890" target="_blank" rel="noopener">Pesan Sekarang</a>
-            </article>
-
-            <article class="price-card featured reveal">
-              <div>
-                <span class="package-badge">Favorit</span>
-                <h3 class="package-name">Spesial Design</h3>
-                <p class="package-note">Kategori Tema Spesial Design</p>
-              </div>
-              <p class="price">Rp149.000</p>
-              <ul class="features">
-                <li>Custom Nama Tamu Unlimited</li>
-                <li>Love Story</li>
-                <li>Amplop/Kado Digital</li>
-                <li>Gallery Photo</li>
-                <li>Hitung Mundur Acara</li>
-                <li>Kolom Ucapan</li>
-                <li>Navigasi Lokasi</li>
-                <li>Quotes Pernikahan</li>
-                <li>Live Streaming</li>
-                <li>Musik Bebas Request</li>
-              </ul>
-              <a class="cta-button" href="https://wa.me/6281234567890" target="_blank" rel="noopener">Pesan Sekarang</a>
-            </article>
-
-            <article class="price-card reveal">
-              <div>
-                <span class="package-badge">Interaktif</span>
-                <h3 class="package-name">3D Motion</h3>
-                <p class="package-note">Kategori Tema 3D Motion</p>
-              </div>
-              <p class="price">Rp189.000</p>
-              <ul class="features">
-                <li>Custom Nama Tamu Unlimited</li>
-                <li>Love Story</li>
-                <li>Amplop/Kado Digital</li>
-                <li>Gallery Photo</li>
-                <li>Hitung Mundur Acara</li>
-                <li>Kolom Ucapan</li>
-                <li>Navigasi Lokasi</li>
-                <li>Quotes Pernikahan</li>
-                <li>Live Streaming</li>
-                <li>Musik Bebas Request</li>
-              </ul>
-              <a class="cta-button" href="https://wa.me/6281234567890" target="_blank" rel="noopener">Pesan Sekarang</a>
-            </article>
-          </div>
+          <div class="pricing-grid" id="pricing-grid"></div>
         </div>
       </section>
 
@@ -271,7 +213,7 @@
             <h2>Bingung Pilih Tema yang Cocok?</h2>
             <p>Ceritakan konsep acara Anda. AWH Digital akan bantu arahkan pilihan paket dan tema yang paling pas.</p>
           </div>
-          <a class="cta-button primary-cta" href="https://wa.me/6281234567890" target="_blank" rel="noopener">Konsultasi Sekarang</a>
+          <a class="cta-button primary-cta" href="https://wa.me/6281383142798" target="_blank" rel="noopener">Konsultasi Sekarang</a>
         </div>
       </section>
 
@@ -305,11 +247,12 @@
 
     <footer class="footer">
       <div class="container">
-        <p>&copy; 2026 AWH Digital. Jasa pembuatan undangan digital elegan dan siap dibagikan.</p>
+        <p>Jasa pembuatan undangan digital elegan dan siap dibagikan.</p>
+        <p>&copy; 2026 AWH Digital.</p>
       </div>
     </footer>
 
-    <a class="floating-cta" href="https://wa.me/6281234567890" target="_blank" rel="noopener">Pesan Sekarang</a>
+    <a class="floating-cta" href="https://wa.me/6281383142798" target="_blank" rel="noopener">Pesan Sekarang</a>
   </div>
 
   <div class="preview-modal" id="preview-modal" aria-hidden="true">
@@ -327,7 +270,7 @@
           <span id="preview-old-price"></span>
           <strong id="preview-price"></strong>
         </div>
-        <a class="cta-button" id="preview-order" href="https://wa.me/6281234567890" target="_blank" rel="noopener">Order Tema Ini</a>
+        <a class="cta-button" id="preview-order" href="https://wa.me/6281383142798" target="_blank" rel="noopener">Order Tema Ini</a>
       </div>
     </article>
   </div>

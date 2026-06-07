@@ -34,6 +34,127 @@ const AWH_FALLBACK_CATALOG = {
       description: "Template non wedding untuk aqiqah, tasyakuran, ulang tahun, dan acara keluarga lainnya."
     }
   ],
+  packages: [
+    {
+      id: "package-classic",
+      name: "Paket Premium",
+      badge: "Best Starter",
+      categoryId: "classic",
+      note: "Kategori Tema Classic & Etnik",
+      oldPrice: "Rp189.000",
+      price: "Rp109.000",
+      discount: "40%",
+      features: [
+        "Custom Nama Tamu Unlimited",
+        "Love Story",
+        "Amplop/Kado Digital",
+        "Gallery Photo",
+        "Hitung Mundur Acara",
+        "Kolom Ucapan",
+        "Navigasi Lokasi",
+        "Quotes Pernikahan",
+        "Live Streaming",
+        "Musik Bebas Request"
+      ],
+      active: true,
+      featured: false
+    },
+    {
+      id: "package-floral",
+      name: "Paket Premium",
+      badge: "Minimalis",
+      categoryId: "floral",
+      note: "Kategori Tema Floral & Simple",
+      oldPrice: "Rp189.000",
+      price: "Rp109.000",
+      discount: "40%",
+      features: [
+        "Custom Nama Tamu Unlimited",
+        "Love Story",
+        "Amplop/Kado Digital",
+        "Gallery Photo",
+        "Hitung Mundur Acara",
+        "Kolom Ucapan",
+        "Navigasi Lokasi",
+        "Quotes Pernikahan",
+        "Live Streaming",
+        "Musik Bebas Request"
+      ],
+      active: true,
+      featured: false
+    },
+    {
+      id: "package-special",
+      name: "Spesial Design",
+      badge: "Favorit",
+      categoryId: "special",
+      note: "Kategori Tema Special Design",
+      oldPrice: "Rp249.000",
+      price: "Rp149.000",
+      discount: "40%",
+      features: [
+        "Custom Nama Tamu Unlimited",
+        "Love Story",
+        "Amplop/Kado Digital",
+        "Gallery Photo",
+        "Hitung Mundur Acara",
+        "Kolom Ucapan",
+        "Navigasi Lokasi",
+        "Quotes Pernikahan",
+        "Live Streaming",
+        "Musik Bebas Request"
+      ],
+      active: true,
+      featured: true
+    },
+    {
+      id: "package-motion",
+      name: "3D Motion",
+      badge: "Interaktif",
+      categoryId: "motion",
+      note: "Kategori Tema 3D Motion",
+      oldPrice: "Rp299.000",
+      price: "Rp189.000",
+      discount: "35%",
+      features: [
+        "Custom Nama Tamu Unlimited",
+        "Love Story",
+        "Amplop/Kado Digital",
+        "Gallery Photo",
+        "Hitung Mundur Acara",
+        "Kolom Ucapan",
+        "Navigasi Lokasi",
+        "Quotes Pernikahan",
+        "Live Streaming",
+        "Musik Bebas Request"
+      ],
+      active: true,
+      featured: false
+    },
+    {
+      id: "package-aqiqah",
+      name: "Non Wedding",
+      badge: "Family Event",
+      categoryId: "aqiqah",
+      note: "Kategori Tema Non Wedding",
+      oldPrice: "Rp159.000",
+      price: "Rp99.000",
+      discount: "38%",
+      features: [
+        "Custom Nama Tamu Unlimited",
+        "Amplop/Kado Digital",
+        "Gallery Photo",
+        "Hitung Mundur Acara",
+        "Kolom Ucapan",
+        "Navigasi Lokasi",
+        "Quotes Acara",
+        "Live Streaming",
+        "Musik Bebas Request"
+      ],
+      active: true,
+      featured: false
+    }
+  ],
   themes: []
 };
 
@@ -92,6 +213,7 @@ const createFallbackThemes = () => {
       price: pricing.price,
       discount: pricing.discount,
       previewLink: "",
+      active: true,
       bestSeller: index === 0 || index === 2
     }));
   });
@@ -101,6 +223,7 @@ AWH_FALLBACK_CATALOG.themes = createFallbackThemes();
 
 let catalogState = {
   categories: [],
+  packages: [],
   themes: []
 };
 
@@ -145,14 +268,39 @@ const normalizeThemes = (themes, categories = catalogState.categories) => {
     price: theme.price || "Rp0",
     discount: theme.discount || "",
     previewLink: theme.previewLink || "",
+    active: theme.active !== false,
     bestSeller: Boolean(theme.bestSeller)
+  }));
+};
+
+const normalizePackages = (packages, categories = catalogState.categories) => {
+  const fallbackCategory = categories[0] ? categories[0].id : "special";
+  const validCategoryIds = new Set(categories.map((category) => category.id));
+
+  if (!Array.isArray(packages)) {
+    return normalizePackages(AWH_FALLBACK_CATALOG.packages, categories);
+  }
+
+  return packages.map((pricePackage, index) => ({
+    id: pricePackage.id || `package-${Date.now()}-${index}`,
+    name: pricePackage.name || "Paket Harga",
+    badge: pricePackage.badge || "",
+    categoryId: validCategoryIds.has(pricePackage.categoryId) ? pricePackage.categoryId : fallbackCategory,
+    note: pricePackage.note || "",
+    oldPrice: pricePackage.oldPrice || "",
+    price: pricePackage.price || "Rp0",
+    discount: pricePackage.discount || "",
+    features: Array.isArray(pricePackage.features) ? pricePackage.features.filter(Boolean) : [],
+    active: pricePackage.active !== false,
+    featured: Boolean(pricePackage.featured)
   }));
 };
 
 const normalizeCatalog = (catalog) => {
   const categories = normalizeCategories(catalog && catalog.categories);
   const themes = normalizeThemes(catalog && catalog.themes, categories);
-  return { categories, themes };
+  const packages = normalizePackages(catalog && catalog.packages, categories);
+  return { categories, packages, themes };
 };
 
 const persistDraft = () => {
@@ -188,11 +336,13 @@ const loadJsonCatalog = async () => {
 const catalogReady = loadJsonCatalog();
 
 const loadCatalogCategories = () => catalogState.categories;
+const loadCatalogPackages = () => catalogState.packages;
 const loadCatalogThemes = () => catalogState.themes;
 
 const saveCatalogThemes = (themes) => {
   catalogState = normalizeCatalog({
     categories: catalogState.categories,
+    packages: catalogState.packages,
     themes
   });
   persistDraft();
@@ -203,6 +353,7 @@ const saveCatalogThemes = (themes) => {
 const saveCatalogCategories = (categories) => {
   catalogState = normalizeCatalog({
     categories,
+    packages: catalogState.packages,
     themes: catalogState.themes
   });
   persistDraft();
@@ -210,11 +361,37 @@ const saveCatalogCategories = (categories) => {
   return catalogState.categories;
 };
 
+const saveCatalogPackages = (packages) => {
+  catalogState = normalizeCatalog({
+    categories: catalogState.categories,
+    packages,
+    themes: catalogState.themes
+  });
+  persistDraft();
+  window.dispatchEvent(new CustomEvent("awhPackagesUpdated", { detail: catalogState.packages }));
+  return catalogState.packages;
+};
+
 const exportCatalogJson = () => JSON.stringify(catalogState, null, 2);
 
 const clearCatalogDraft = () => {
   localStorage.removeItem(AWH_CATALOG_DRAFT_KEY);
 };
+
+window.addEventListener("storage", (event) => {
+  if (event.key !== AWH_CATALOG_DRAFT_KEY || !event.newValue) {
+    return;
+  }
+
+  try {
+    catalogState = normalizeCatalog(JSON.parse(event.newValue));
+    window.dispatchEvent(new CustomEvent("awhCatalogUpdated", { detail: catalogState.themes }));
+    window.dispatchEvent(new CustomEvent("awhCategoriesUpdated", { detail: catalogState.categories }));
+    window.dispatchEvent(new CustomEvent("awhPackagesUpdated", { detail: catalogState.packages }));
+  } catch (error) {
+    localStorage.removeItem(AWH_CATALOG_DRAFT_KEY);
+  }
+});
 
 window.AWHCatalogStore = {
   get categories() {
@@ -226,6 +403,8 @@ window.AWHCatalogStore = {
   save: saveCatalogThemes,
   loadCategories: loadCatalogCategories,
   saveCategories: saveCatalogCategories,
+  loadPackages: loadCatalogPackages,
+  savePackages: saveCatalogPackages,
   exportJson: exportCatalogJson,
   clearDraft: clearCatalogDraft,
   slugifyCategory
