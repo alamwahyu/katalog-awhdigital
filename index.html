@@ -103,69 +103,10 @@
           </div>
           <p>Harga promo bisa berubah sewaktu-waktu.</p>
         </div>
-        <nav class="category-nav catalog-filter reveal" aria-label="Filter kategori katalog">
-          <button class="nav-button is-active" type="button" data-target="special-design" aria-controls="special-design" aria-selected="true">Special Design</button>
-          <button class="nav-button" type="button" data-target="motion-web" aria-controls="motion-web" aria-selected="false">3D Motion</button>
-          <button class="nav-button" type="button" data-target="classic-etnik" aria-controls="classic-etnik" aria-selected="false">Classic &amp; Etnik</button>
-          <button class="nav-button" type="button" data-target="floral-simple" aria-controls="floral-simple" aria-selected="false">Floral &amp; Simple</button>
-          <button class="nav-button" type="button" data-target="non-wedding" aria-controls="non-wedding" aria-selected="false">Non Wedding</button>
-        </nav>
+        <nav class="category-nav catalog-filter reveal" id="catalog-filter" aria-label="Filter kategori katalog"></nav>
       </div>
 
-      <section class="catalog-section is-active" id="special-design" aria-hidden="false">
-        <div class="container">
-          <div class="section-heading reveal">
-            <span class="label">Kategori</span>
-            <h2>SPESIAL DESIGN</h2>
-            <p>Template elegan dengan komposisi premium untuk undangan yang terlihat personal dan berkelas.</p>
-          </div>
-          <div class="catalog-grid" data-category="Spesial Design" data-count="8" data-seed="special"></div>
-        </div>
-      </section>
-
-      <section class="catalog-section" id="motion-web" aria-hidden="true">
-        <div class="container">
-          <div class="section-heading reveal">
-            <span class="label">Kategori</span>
-            <h2>3D MOTION WEB</h2>
-            <p>Desain modern dengan nuansa dinamis untuk tampilan undangan yang lebih hidup.</p>
-          </div>
-          <div class="catalog-grid" data-category="3D Motion" data-count="8" data-seed="motion"></div>
-        </div>
-      </section>
-
-      <section class="catalog-section" id="classic-etnik" aria-hidden="true">
-        <div class="container">
-          <div class="section-heading reveal">
-            <span class="label">Kategori</span>
-            <h2>WEDDING TEMA CLASSIC &amp; ADAT</h2>
-            <p>Nuansa klasik dan adat untuk pasangan yang menyukai tampilan hangat, formal, dan timeless.</p>
-          </div>
-          <div class="catalog-grid" data-category="Classic & Adat" data-count="8" data-seed="classic"></div>
-        </div>
-      </section>
-
-      <section class="catalog-section" id="floral-simple" aria-hidden="true">
-        <div class="container">
-          <div class="section-heading reveal">
-            <span class="label">Kategori</span>
-            <h2>WEDDING TEMA FLORAL &amp; MINIMALIS</h2>
-            <p>Pilihan tema soft, clean, dan romantis dengan sentuhan floral minimalis.</p>
-          </div>
-          <div class="catalog-grid" data-category="Floral & Minimalis" data-count="8" data-seed="floral"></div>
-        </div>
-      </section>
-
-      <section class="catalog-section" id="non-wedding" aria-hidden="true">
-        <div class="container">
-          <div class="section-heading reveal">
-            <span class="label">Kategori</span>
-            <h2>AQIQAH DLL</h2>
-            <p>Template non wedding untuk aqiqah, tasyakuran, ulang tahun, dan acara keluarga lainnya.</p>
-          </div>
-          <div class="catalog-grid" data-category="Non Wedding" data-count="6" data-seed="aqiqah"></div>
-        </div>
-      </section>
+      <div id="catalog-sections"></div>
 
       <section class="pricing-section" id="pricelist">
         <div class="container">
@@ -345,6 +286,7 @@
     </article>
   </div>
 
+  <script src="catalog-data.js"></script>
   <script src="script.js"></script>
 </body>
 </html>

@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Katalog | AWH Digital</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="admin.css" />
+</head>
+<body>
+  <main class="admin-shell">
+    <section class="login-screen" id="login-screen">
+      <form class="login-card" id="login-form">
+        <img src="images/logo.png" alt="Logo AWH Digital" />
+        <span>AWH Digital Admin</span>
+        <h1>Login Pengelola Katalog</h1>
+        <p>Masuk untuk menambah, mengubah, dan menghapus tema katalog undangan digital.</p>
+        <label>
+          Username
+          <input type="text" id="username" autocomplete="username" required />
+        </label>
+        <label>
+          Password
+          <input type="password" id="password" autocomplete="current-password" required />
+        </label>
+        <p class="form-message" id="login-message"></p>
+        <button type="submit">Login</button>
+        <small>Demo login: admin / awhdigital123</small>
+      </form>
+    </section>
+
+    <section class="dashboard" id="dashboard" hidden>
+      <header class="admin-header">
+        <div class="brand">
+          <img src="images/logo.png" alt="Logo AWH Digital" />
+          <div>
+            <strong>AWH Digital</strong>
+            <span>Admin Katalog Tema</span>
+          </div>
+        </div>
+        <div class="header-actions">
+          <button type="button" id="open-theme-form">Add Tema</button>
+          <button type="button" id="open-category-form">Add Kategori</button>
+          <a href="index.html" target="_blank" rel="noopener">Lihat Website</a>
+          <button type="button" id="logout">Logout</button>
+        </div>
+      </header>
+
+      <div class="admin-layout">
+        <section class="panel list-panel">
+          <div class="panel-heading list-heading">
+            <div>
+              <span>Data Katalog</span>
+              <h2>Kelola Tema</h2>
+            </div>
+            <select id="filter-category" aria-label="Filter kategori tema"></select>
+          </div>
+          <div class="admin-stats" id="admin-stats"></div>
+          <div class="theme-list" id="theme-list"></div>
+        </section>
+
+        <aside class="panel category-panel">
+          <div class="panel-heading">
+            <span>Data Kategori</span>
+            <h2>Kelola Kategori</h2>
+          </div>
+          <div class="category-list" id="category-list"></div>
+        </aside>
+      </div>
+    </section>
+
+    <section class="admin-modal" id="theme-modal" hidden>
+      <div class="modal-overlay" data-close-modal></div>
+      <aside class="panel form-panel modal-panel">
+        <button type="button" class="modal-close-admin" data-close-modal aria-label="Tutup form tema">x</button>
+          <div class="panel-heading">
+            <span>Form Tema</span>
+            <h2 id="form-title">Tambah Tema Baru</h2>
+          </div>
+          <form id="theme-form">
+            <input type="hidden" id="theme-id" />
+            <label>
+              Nama Tema
+              <input type="text" id="theme-name" placeholder="Contoh: Royal Garden" required />
+            </label>
+            <label>
+              Upload Gambar Tema
+              <input type="file" id="theme-image" accept="image/*" />
+            </label>
+            <label>
+              URL Gambar Tema
+              <input type="url" id="theme-image-url" placeholder="https://domain.com/gambar-tema.jpg" />
+            </label>
+            <div class="image-preview" id="image-preview">
+              <span>Preview gambar akan tampil di sini</span>
+            </div>
+            <label>
+              Kategori
+              <select id="theme-category" required></select>
+            </label>
+            <label>
+              Theme Badge
+              <input type="text" id="theme-badge" placeholder="Contoh: Tema 01 / Luxury / New" />
+            </label>
+            <div class="form-grid">
+              <label>
+                Harga
+                <input type="text" id="theme-price" inputmode="numeric" placeholder="149000" required />
+              </label>
+              <label>
+                Diskon
+                <input type="text" id="theme-discount" inputmode="numeric" placeholder="40" />
+              </label>
+            </div>
+            <label>
+              Harga Sebelum Diskon
+              <input type="text" id="theme-old-price" inputmode="numeric" placeholder="249000" />
+            </label>
+            <label>
+              Link Preview
+              <input type="url" id="theme-preview-link" placeholder="https://contoh-preview.com" />
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" id="theme-best-seller" />
+              <span>Tandai sebagai Best Seller</span>
+            </label>
+            <div class="form-actions">
+              <button type="submit" id="save-theme">Simpan Tema</button>
+              <button type="button" class="secondary" id="cancel-edit">Batal</button>
+            </div>
+            <p class="form-message" id="form-message"></p>
+          </form>
+      </aside>
+    </section>
+
+    <section class="admin-modal" id="category-modal" hidden>
+      <div class="modal-overlay" data-close-modal></div>
+      <aside class="panel form-panel modal-panel">
+        <button type="button" class="modal-close-admin" data-close-modal aria-label="Tutup form kategori">x</button>
+        <div class="category-manager">
+            <div class="panel-heading">
+              <span>Form Kategori</span>
+              <h2 id="category-form-title">Tambah Kategori</h2>
+            </div>
+            <form id="category-form">
+              <input type="hidden" id="category-id" />
+              <label>
+                Nama Tombol Kategori
+                <input type="text" id="category-label" placeholder="Contoh: Engagement" required />
+              </label>
+              <label>
+                Judul Section
+                <input type="text" id="category-title" placeholder="Contoh: ENGAGEMENT & COUPLE" required />
+              </label>
+              <label>
+                Deskripsi Section
+                <input type="text" id="category-description" placeholder="Deskripsi singkat kategori" required />
+              </label>
+              <div class="form-actions">
+                <button type="submit">Simpan Kategori</button>
+                <button type="button" class="secondary" id="cancel-category-edit">Batal</button>
+              </div>
+              <p class="form-message" id="category-message"></p>
+            </form>
+          </div>
+      </aside>
+    </section>
+  </main>
+
+  <script src="catalog-data.js"></script>
+  <script src="admin.js"></script>
+</body>
+</html>
