@@ -49,8 +49,20 @@ const renderThemeCard = (theme, index) => {
         <strong class="new-price">${theme.price}</strong>
       </div>
       <div class="card-actions">
-        <button class="preview-button" type="button" aria-label="Preview ${theme.name} ${category}">Preview</button>
-        <a class="order-button" href="${orderUrl}" target="_blank" rel="noopener" aria-label="Order ${theme.name} ${category}">Order</a>
+        <button class="preview-button" type="button" aria-label="Preview ${theme.name} ${category}">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M2.25 12s3.75-6.75 9.75-6.75S21.75 12 21.75 12 18 18.75 12 18.75 2.25 12 2.25 12Z" />
+            <path d="M12 15.25a3.25 3.25 0 1 0 0-6.5 3.25 3.25 0 0 0 0 6.5Z" />
+          </svg>
+          <span>Preview</span>
+        </button>
+        <a class="order-button" href="${orderUrl}" target="_blank" rel="noopener" aria-label="Order ${theme.name} ${category}">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M20.5 11.5a8.5 8.5 0 0 1-12.61 7.45L3.5 20.5l1.48-4.5A8.5 8.5 0 1 1 20.5 11.5Z" />
+            <path d="M8.75 8.9c.15 3.35 2.5 5.42 5.35 6.08l1.45-1.45-2.12-1.18-.72.72c-.95-.33-1.72-1.1-2.05-2.05l.72-.72-1.18-2.12-1.45 1.72Z" />
+          </svg>
+          <span>Order</span>
+        </a>
       </div>
     </div>
   `;
@@ -84,6 +96,67 @@ const observeRevealElements = () => {
   document.querySelectorAll(".reveal:not(.is-visible)").forEach((element) => {
     revealObserver.observe(element);
   });
+};
+
+const navLinks = document.querySelectorAll(".nav-links a[href^='#']");
+
+const setActiveNav = (sectionId) => {
+  navLinks.forEach((link) => {
+    link.classList.toggle("is-active", link.getAttribute("href") === `#${sectionId}`);
+  });
+};
+
+const initSectionScrollSpy = () => {
+  const sections = Array.from(navLinks)
+    .map((link) => document.querySelector(link.getAttribute("href")))
+    .filter(Boolean);
+
+  if (!sections.length) {
+    return;
+  }
+
+  const getHeaderOffset = () => {
+    const header = document.querySelector(".site-nav");
+    return header ? header.offsetHeight + 48 : 120;
+  };
+
+  const updateActiveNav = () => {
+    const currentPosition = window.scrollY + getHeaderOffset();
+    let activeSection = sections[0];
+
+    sections.forEach((section) => {
+      if (section.offsetTop <= currentPosition) {
+        activeSection = section;
+      }
+    });
+
+    setActiveNav(activeSection.id);
+  };
+
+  let ticking = false;
+
+  window.addEventListener("scroll", () => {
+    if (ticking) {
+      return;
+    }
+
+    ticking = true;
+    window.requestAnimationFrame(() => {
+      updateActiveNav();
+      ticking = false;
+    });
+  }, { passive: true });
+
+  window.addEventListener("resize", updateActiveNav);
+
+  navLinks.forEach((link) => {
+    link.addEventListener("click", () => {
+      const targetId = link.getAttribute("href").slice(1);
+      setActiveNav(targetId);
+    });
+  });
+
+  updateActiveNav();
 };
 
 const renderCategoryControls = (categories) => {
@@ -242,4 +315,7 @@ document.addEventListener("keydown", (event) => {
 window.addEventListener("awhCatalogUpdated", renderCatalog);
 window.addEventListener("awhCategoriesUpdated", renderCatalog);
 
-window.AWHCatalogStore.ready.then(renderCatalog);
+window.AWHCatalogStore.ready.then(() => {
+  renderCatalog();
+  initSectionScrollSpy();
+});
