@@ -33,11 +33,11 @@ body {
 }
 
 body:has(.dashboard:not([hidden])) {
-  overflow: hidden;
+  overflow: auto;
 }
 
 body.admin-dashboard-active {
-  overflow: hidden;
+  overflow: auto;
 }
 
 button,
@@ -59,6 +59,7 @@ a {
 
 .admin-shell {
   min-height: 100vh;
+  overflow-x: hidden;
 }
 
 .login-screen {
@@ -200,10 +201,10 @@ small,
 
 .dashboard {
   width: min(100% - 32px, 1280px);
-  height: 100vh;
+  min-height: 100vh;
   margin: 0 auto;
   padding: 18px 0;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .admin-header {
@@ -213,7 +214,7 @@ small,
   align-items: center;
   justify-content: space-between;
   gap: 20px;
-  height: 76px;
+  min-height: 76px;
   margin-bottom: 16px;
   padding: 14px 18px;
 }
@@ -300,9 +301,9 @@ small,
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
   gap: 22px;
-  height: calc(100vh - 110px);
-  align-items: start;
-  overflow: hidden;
+  min-height: calc(100vh - 110px);
+  align-items: stretch;
+  overflow: visible;
 }
 
 .panel {
@@ -333,7 +334,8 @@ small,
 .list-panel {
   display: flex;
   min-height: 0;
-  max-height: 100%;
+  height: calc(100vh - 110px);
+  max-height: calc(100vh - 110px);
   flex-direction: column;
   overflow: hidden;
 }
@@ -341,7 +343,8 @@ small,
 .side-panels {
   display: grid;
   min-height: 0;
-  max-height: 100%;
+  height: calc(100vh - 110px);
+  max-height: calc(100vh - 110px);
   grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
   gap: 22px;
   overflow: hidden;
@@ -685,11 +688,13 @@ form {
 
   .admin-layout {
     height: auto;
+    min-height: 0;
     overflow: visible;
     gap: 16px;
   }
 
   .side-panels {
+    height: auto;
     max-height: none;
     grid-template-rows: auto;
     gap: 16px;
@@ -758,6 +763,7 @@ form {
   .list-panel,
   .category-panel,
   .price-panel {
+    height: auto;
     max-height: none;
     overflow: visible;
   }
