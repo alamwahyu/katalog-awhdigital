@@ -183,6 +183,16 @@ app.post("/api/upload-theme", upload.single("themeImage"), async (request, respo
   }
 });
 
+app.get(["/", "/index.html"], (request, response) => {
+  response.setHeader("Cache-Control", "no-store");
+  response.sendFile(path.join(ROOT_DIR, "index.html"));
+});
+
+app.get("/admin.html", (request, response) => {
+  response.setHeader("Cache-Control", "no-store");
+  response.sendFile(path.join(ROOT_DIR, "admin.html"));
+});
+
 app.use((error, request, response, next) => {
   if (error.message === "INVALID_IMAGE_TYPE") {
     response.status(415).json({ success: false, message: "Format gambar harus JPG, PNG, atau WEBP." });

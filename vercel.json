@@ -2,12 +2,16 @@
   "version": 2,
   "functions": {
     "api/index.js": {
-      "includeFiles": "{catalog.json,thema/**}"
+      "includeFiles": "{*.html,*.css,*.js,catalog.json,images/**,thema/**}"
     }
   },
   "rewrites": [
     {
       "source": "/api/(.*)",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/(.*)",
       "destination": "/api/index.js"
     }
   ]
