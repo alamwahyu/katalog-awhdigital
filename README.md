@@ -2,9 +2,10 @@
 
 Website katalog undangan digital dengan admin panel.
 
-## Jalankan Mode Node.js
+## Jalankan Mode Express Node.js
 
 ```bash
+npm install
 npm start
 ```
 
@@ -20,8 +21,17 @@ Dalam mode Node.js:
 - Upload gambar tema disimpan ke folder `thema/` melalui `POST /api/upload-theme`.
 - Jika tema dihapus atau gambar tema diganti, file gambar lama di folder `thema/` ikut dihapus selama tidak dipakai tema lain.
 
-## Catatan Deploy
+## Deploy Vercel
+
+Project ini sudah disiapkan untuk Express serverless di Vercel:
+
+- `app.js` berisi Express app.
+- `server.js` menjalankan Express untuk local/VPS.
+- `api/index.js` mengekspor Express app untuk Vercel Functions.
+- `vercel.json` melakukan rewrite `/api/*` ke serverless function.
+
+## Catatan Storage
 
 Mode tulis file JSON dan upload ke folder hanya cocok untuk hosting Node.js dengan filesystem writable/persistent, misalnya VPS atau hosting Node.js yang mendukung persistent disk.
 
-Jika deploy ke Vercel serverless/static, perubahan file tidak persisten. Untuk Vercel, gunakan database/storage seperti Supabase dan Vercel Blob/Cloudinary.
+Jika deploy ke Vercel serverless/static, perubahan file tidak persisten. Karena itu route `PUT /api/catalog` dan `POST /api/upload-theme` akan menolak penyimpanan file saat berjalan di Vercel production. Untuk Vercel, gunakan database/storage seperti Supabase dan Vercel Blob/Cloudinary.

@@ -1,0 +1,17 @@
+{
+  "version": 2,
+  "functions": {
+    "api/index.js": {
+      "includeFiles": [
+        "catalog.json",
+        "thema/**"
+      ]
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/index.js"
+    }
+  ]
+}
