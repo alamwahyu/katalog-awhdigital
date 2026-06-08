@@ -70,7 +70,7 @@ let pricePackages = [];
 
 const IMAGE_MAX_SIZE = 900;
 const IMAGE_QUALITY = 0.76;
-const THEME_UPLOAD_ENDPOINT = "upload-theme.php";
+const THEME_UPLOAD_ENDPOINT = "/api/upload-theme";
 
 const onlyDigits = (value) => value.replace(/[^\d]/g, "");
 
@@ -125,7 +125,7 @@ const handleStorageError = (error, element = formMessage) => {
     return true;
   }
 
-  setMessage(element, "Data gagal disimpan. Cek console browser untuk detail error.", "error");
+  setMessage(element, "Data gagal disimpan. Pastikan server Node.js berjalan dan catalog.json bisa ditulis.", "error");
   console.error(error);
   return true;
 };
@@ -238,11 +238,13 @@ const resetPriceForm = () => {
   setMessage(priceMessage, "");
 };
 
-const saveThemes = (nextThemes = themes, messageElement = formMessage) => {
+const saveThemes = async (nextThemes = themes, messageElement = formMessage) => {
   const previousThemes = themes;
 
   try {
-    themes = window.AWHCatalogStore.save(nextThemes);
+    themes = window.AWHCatalogStore.saveAsync
+      ? await window.AWHCatalogStore.saveAsync(nextThemes)
+      : window.AWHCatalogStore.save(nextThemes);
     renderAdmin();
     return true;
   } catch (error) {
@@ -252,11 +254,13 @@ const saveThemes = (nextThemes = themes, messageElement = formMessage) => {
   }
 };
 
-const saveCategories = (nextCategories = categories, messageElement = categoryMessage) => {
+const saveCategories = async (nextCategories = categories, messageElement = categoryMessage) => {
   const previousCategories = categories;
 
   try {
-    categories = window.AWHCatalogStore.saveCategories(nextCategories);
+    categories = window.AWHCatalogStore.saveCategoriesAsync
+      ? await window.AWHCatalogStore.saveCategoriesAsync(nextCategories)
+      : window.AWHCatalogStore.saveCategories(nextCategories);
     populateCategories();
     renderAdmin();
     return true;
@@ -267,11 +271,13 @@ const saveCategories = (nextCategories = categories, messageElement = categoryMe
   }
 };
 
-const savePackages = (nextPackages = pricePackages, messageElement = priceMessage) => {
+const savePackages = async (nextPackages = pricePackages, messageElement = priceMessage) => {
   const previousPackages = pricePackages;
 
   try {
-    pricePackages = window.AWHCatalogStore.savePackages(nextPackages);
+    pricePackages = window.AWHCatalogStore.savePackagesAsync
+      ? await window.AWHCatalogStore.savePackagesAsync(nextPackages)
+      : window.AWHCatalogStore.savePackages(nextPackages);
     renderAdmin();
     return true;
   } catch (error) {
@@ -400,7 +406,7 @@ const renderAdmin = () => {
   renderPriceList();
 };
 
-const fileToCompressedDataUrl = (file) => {
+const createCompressedCanvas = (file) => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     const image = new Image();
@@ -418,8 +424,10 @@ const fileToCompressedDataUrl = (file) => {
 
       canvas.width = width;
       canvas.height = height;
+      context.fillStyle = "#ffffff";
+      context.fillRect(0, 0, width, height);
       context.drawImage(image, 0, 0, width, height);
-      resolve(canvas.toDataURL("image/jpeg", IMAGE_QUALITY));
+      resolve(canvas);
     };
 
     image.onerror = reject;
@@ -428,9 +436,31 @@ const fileToCompressedDataUrl = (file) => {
   });
 };
 
+const fileToCompressedDataUrl = async (file) => {
+  const canvas = await createCompressedCanvas(file);
+  return canvas.toDataURL("image/jpeg", IMAGE_QUALITY);
+};
+
+const fileToCompressedBlob = async (file) => {
+  const canvas = await createCompressedCanvas(file);
+
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (!blob) {
+        reject(new Error("IMAGE_COMPRESSION_FAILED"));
+        return;
+      }
+
+      resolve(blob);
+    }, "image/jpeg", IMAGE_QUALITY);
+  });
+};
+
 const uploadThemeImage = async (file) => {
+  const compressedBlob = await fileToCompressedBlob(file);
+  const compressedName = `${file.name.replace(/\.[^.]+$/, "") || "theme-image"}.jpg`;
   const formData = new FormData();
-  formData.append("themeImage", file);
+  formData.append("themeImage", compressedBlob, compressedName);
 
   const response = await fetch(THEME_UPLOAD_ENDPOINT, {
     method: "POST",
@@ -546,7 +576,7 @@ themeImageInput.addEventListener("change", async () => {
     selectedImage = await uploadThemeImage(file);
     themeImageUrlInput.value = "";
     renderImagePreview(selectedImage);
-    setMessage(formMessage, "Gambar berhasil diupload ke folder thema.", "success");
+    setMessage(formMessage, "Gambar berhasil dikompres dan diupload ke folder thema.", "success");
   } catch (error) {
     try {
       selectedImage = await fileToCompressedDataUrl(file);
@@ -580,7 +610,7 @@ priceDiscountInput.addEventListener("blur", () => {
   priceDiscountInput.value = formatDiscount(priceDiscountInput.value);
 });
 
-themeForm.addEventListener("submit", (event) => {
+themeForm.addEventListener("submit", async (event) => {
   event.preventDefault();
 
   const editingId = themeIdInput.value;
@@ -612,7 +642,7 @@ themeForm.addEventListener("submit", (event) => {
   if (editingId) {
     const nextThemes = themes.map((theme) => theme.id === editingId ? themePayload : theme);
 
-    if (!saveThemes(nextThemes, formMessage)) {
+    if (!await saveThemes(nextThemes, formMessage)) {
       return;
     }
 
@@ -622,7 +652,7 @@ themeForm.addEventListener("submit", (event) => {
   } else {
     const nextThemes = [themePayload, ...themes];
 
-    if (!saveThemes(nextThemes, formMessage)) {
+    if (!await saveThemes(nextThemes, formMessage)) {
       return;
     }
 
@@ -632,7 +662,7 @@ themeForm.addEventListener("submit", (event) => {
   }
 });
 
-themeList.addEventListener("click", (event) => {
+themeList.addEventListener("click", async (event) => {
   const actionButton = event.target.closest("[data-action]");
 
   if (!actionButton) {
@@ -652,7 +682,7 @@ themeList.addEventListener("click", (event) => {
       return;
     }
 
-    saveThemes(themes.filter((item) => item.id !== themeId), formMessage);
+    await saveThemes(themes.filter((item) => item.id !== themeId), formMessage);
     return;
   }
 
@@ -674,7 +704,7 @@ themeList.addEventListener("click", (event) => {
   openModal(themeModal);
 });
 
-priceForm.addEventListener("submit", (event) => {
+priceForm.addEventListener("submit", async (event) => {
   event.preventDefault();
 
   normalizePackagePriceInputs();
@@ -707,7 +737,7 @@ priceForm.addEventListener("submit", (event) => {
   if (editingId) {
     const nextPackages = pricePackages.map((pricePackage) => pricePackage.id === editingId ? payload : pricePackage);
 
-    if (!savePackages(nextPackages, priceMessage)) {
+    if (!await savePackages(nextPackages, priceMessage)) {
       return;
     }
 
@@ -715,7 +745,7 @@ priceForm.addEventListener("submit", (event) => {
   } else {
     const nextPackages = [payload, ...pricePackages];
 
-    if (!savePackages(nextPackages, priceMessage)) {
+    if (!await savePackages(nextPackages, priceMessage)) {
       return;
     }
 
@@ -726,7 +756,7 @@ priceForm.addEventListener("submit", (event) => {
   closeModal(priceModal);
 });
 
-priceList.addEventListener("click", (event) => {
+priceList.addEventListener("click", async (event) => {
   const actionButton = event.target.closest("[data-price-action]");
 
   if (!actionButton) {
@@ -746,7 +776,7 @@ priceList.addEventListener("click", (event) => {
       return;
     }
 
-    savePackages(pricePackages.filter((item) => item.id !== packageId), priceMessage);
+    await savePackages(pricePackages.filter((item) => item.id !== packageId), priceMessage);
     return;
   }
 
@@ -766,7 +796,7 @@ priceList.addEventListener("click", (event) => {
   openModal(priceModal);
 });
 
-categoryForm.addEventListener("submit", (event) => {
+categoryForm.addEventListener("submit", async (event) => {
   event.preventDefault();
 
   const editingId = categoryIdInput.value;
@@ -792,7 +822,7 @@ categoryForm.addEventListener("submit", (event) => {
   if (editingId) {
     const nextCategories = categories.map((category) => category.id === editingId ? payload : category);
 
-    if (!saveCategories(nextCategories, categoryMessage)) {
+    if (!await saveCategories(nextCategories, categoryMessage)) {
       return;
     }
 
@@ -800,7 +830,7 @@ categoryForm.addEventListener("submit", (event) => {
   } else {
     const nextCategories = [...categories, payload];
 
-    if (!saveCategories(nextCategories, categoryMessage)) {
+    if (!await saveCategories(nextCategories, categoryMessage)) {
       return;
     }
 
@@ -812,7 +842,7 @@ categoryForm.addEventListener("submit", (event) => {
   setMessage(categoryMessage, editingId ? "Kategori berhasil diperbarui." : "Kategori baru berhasil ditambahkan.", "success");
 });
 
-categoryList.addEventListener("click", (event) => {
+categoryList.addEventListener("click", async (event) => {
   const actionButton = event.target.closest("[data-category-action]");
 
   if (!actionButton) {
@@ -846,15 +876,15 @@ categoryList.addEventListener("click", (event) => {
     const nextThemes = themes.filter((theme) => theme.categoryId !== categoryId);
     const nextPackages = pricePackages.filter((pricePackage) => pricePackage.categoryId !== categoryId);
 
-    if (!saveThemes(nextThemes, categoryMessage)) {
+    if (!await saveThemes(nextThemes, categoryMessage)) {
       return;
     }
 
-    if (!savePackages(nextPackages, categoryMessage)) {
+    if (!await savePackages(nextPackages, categoryMessage)) {
       return;
     }
 
-    if (!saveCategories(nextCategories, categoryMessage)) {
+    if (!await saveCategories(nextCategories, categoryMessage)) {
       return;
     }
 

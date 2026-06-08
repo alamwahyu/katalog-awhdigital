@@ -1,3 +1,4 @@
+const AWH_API_SOURCE = "/api/catalog";
 const AWH_JSON_SOURCE = "catalog.json";
 const AWH_CATALOG_DRAFT_KEY = "awhDigitalCatalogDraft";
 
@@ -227,6 +228,8 @@ let catalogState = {
   themes: []
 };
 
+let isRemoteCatalog = false;
+
 const slugifyCategory = (value) => {
   const slug = value
     .toLowerCase()
@@ -314,15 +317,28 @@ const persistDraft = (nextState = catalogState) => {
   }
 };
 
+const fetchCatalogSource = async (source) => {
+  const response = await fetch(source, { cache: "no-store" });
+
+  if (!response.ok) {
+    throw new Error(`Failed to load ${source}`);
+  }
+
+  return response.json();
+};
+
 const loadJsonCatalog = async () => {
   try {
-    const response = await fetch(AWH_JSON_SOURCE, { cache: "no-store" });
+    catalogState = normalizeCatalog(await fetchCatalogSource(AWH_API_SOURCE));
+    isRemoteCatalog = true;
+    localStorage.removeItem(AWH_CATALOG_DRAFT_KEY);
+    return catalogState;
+  } catch (error) {
+    isRemoteCatalog = false;
+  }
 
-    if (!response.ok) {
-      throw new Error(`Failed to load ${AWH_JSON_SOURCE}`);
-    }
-
-    catalogState = normalizeCatalog(await response.json());
+  try {
+    catalogState = normalizeCatalog(await fetchCatalogSource(AWH_JSON_SOURCE));
   } catch (error) {
     catalogState = normalizeCatalog(AWH_FALLBACK_CATALOG);
   }
@@ -346,6 +362,41 @@ const loadCatalogCategories = () => catalogState.categories;
 const loadCatalogPackages = () => catalogState.packages;
 const loadCatalogThemes = () => catalogState.themes;
 
+const persistCatalog = async (nextState) => {
+  if (!isRemoteCatalog) {
+    persistDraft(nextState);
+    return nextState;
+  }
+
+  const response = await fetch(AWH_API_SOURCE, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(nextState)
+  });
+
+  let result = null;
+
+  try {
+    result = await response.json();
+  } catch (error) {
+    result = null;
+  }
+
+  if (!response.ok) {
+    throw new Error(result && result.message ? result.message : "AWH_REMOTE_SAVE_FAILED");
+  }
+
+  return normalizeCatalog(result && result.catalog ? result.catalog : result);
+};
+
+const dispatchCatalogEvents = () => {
+  window.dispatchEvent(new CustomEvent("awhCatalogUpdated", { detail: catalogState.themes }));
+  window.dispatchEvent(new CustomEvent("awhCategoriesUpdated", { detail: catalogState.categories }));
+  window.dispatchEvent(new CustomEvent("awhPackagesUpdated", { detail: catalogState.packages }));
+};
+
 const saveCatalogThemes = (themes) => {
   const nextState = normalizeCatalog({
     categories: catalogState.categories,
@@ -355,6 +406,17 @@ const saveCatalogThemes = (themes) => {
   persistDraft(nextState);
   catalogState = nextState;
   window.dispatchEvent(new CustomEvent("awhCatalogUpdated", { detail: catalogState.themes }));
+  return catalogState.themes;
+};
+
+const saveCatalogThemesAsync = async (themes) => {
+  const nextState = normalizeCatalog({
+    categories: catalogState.categories,
+    packages: catalogState.packages,
+    themes
+  });
+  catalogState = await persistCatalog(nextState);
+  dispatchCatalogEvents();
   return catalogState.themes;
 };
 
@@ -370,6 +432,17 @@ const saveCatalogCategories = (categories) => {
   return catalogState.categories;
 };
 
+const saveCatalogCategoriesAsync = async (categories) => {
+  const nextState = normalizeCatalog({
+    categories,
+    packages: catalogState.packages,
+    themes: catalogState.themes
+  });
+  catalogState = await persistCatalog(nextState);
+  dispatchCatalogEvents();
+  return catalogState.categories;
+};
+
 const saveCatalogPackages = (packages) => {
   const nextState = normalizeCatalog({
     categories: catalogState.categories,
@@ -379,6 +452,17 @@ const saveCatalogPackages = (packages) => {
   persistDraft(nextState);
   catalogState = nextState;
   window.dispatchEvent(new CustomEvent("awhPackagesUpdated", { detail: catalogState.packages }));
+  return catalogState.packages;
+};
+
+const saveCatalogPackagesAsync = async (packages) => {
+  const nextState = normalizeCatalog({
+    categories: catalogState.categories,
+    packages,
+    themes: catalogState.themes
+  });
+  catalogState = await persistCatalog(nextState);
+  dispatchCatalogEvents();
   return catalogState.packages;
 };
 
@@ -411,11 +495,15 @@ window.AWHCatalogStore = {
   draftKey: AWH_CATALOG_DRAFT_KEY,
   load: loadCatalogThemes,
   save: saveCatalogThemes,
+  saveAsync: saveCatalogThemesAsync,
   loadCategories: loadCatalogCategories,
   saveCategories: saveCatalogCategories,
+  saveCategoriesAsync: saveCatalogCategoriesAsync,
   loadPackages: loadCatalogPackages,
   savePackages: saveCatalogPackages,
+  savePackagesAsync: saveCatalogPackagesAsync,
   exportJson: exportCatalogJson,
   clearDraft: clearCatalogDraft,
+  isRemote: () => isRemoteCatalog,
   slugifyCategory
 };
