@@ -304,7 +304,7 @@ const savePackages = async (nextPackages = pricePackages, messageElement = price
   }
 };
 
-const saveCatalogSnapshot = async (nextCatalog, messageElement = formMessage) => {
+const saveAdminCatalogSnapshot = async (nextCatalog, messageElement = formMessage) => {
   const previousThemes = themes;
   const previousCategories = categories;
   const previousPackages = pricePackages;
@@ -963,7 +963,7 @@ categoryList.addEventListener("click", async (event) => {
     showLoading();
 
     try {
-      if (!await saveCatalogSnapshot({
+      if (!await saveAdminCatalogSnapshot({
         categories: nextCategories,
         packages: nextPackages,
         themes: nextThemes

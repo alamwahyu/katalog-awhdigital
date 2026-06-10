@@ -3,3 +3,5 @@ node_modules/
 npm-debug.log*
 catalog.json.tmp
 .env.local
+.vercel
+.env*
