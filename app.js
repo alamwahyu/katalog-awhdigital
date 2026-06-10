@@ -92,7 +92,7 @@ const readLegacyPublicBlobCatalog = async () => {
 const readBlobCatalog = async () => {
   const { get, put } = await getBlobSdk();
   const catalogBlob = await get(CATALOG_BLOB_PATH, {
-    access: "private",
+    access: "public",
     useCache: false
   }).catch(() => null);
 
@@ -105,7 +105,7 @@ const readBlobCatalog = async () => {
   if (!legacyCatalog) {
     const localCatalog = await readCatalog();
     await put(CATALOG_BLOB_PATH, JSON.stringify(localCatalog, null, 2), {
-      access: "private",
+      access: "public",
       allowOverwrite: true,
       contentType: "application/json",
       cacheControlMaxAge: 60
@@ -114,7 +114,7 @@ const readBlobCatalog = async () => {
   }
 
   await put(CATALOG_BLOB_PATH, JSON.stringify(legacyCatalog, null, 2), {
-    access: "private",
+    access: "public",
     allowOverwrite: true,
     contentType: "application/json",
     cacheControlMaxAge: 60
@@ -126,7 +126,7 @@ const writeBlobCatalog = async (catalog) => {
   const { put } = await getBlobSdk();
 
   await put(CATALOG_BLOB_PATH, JSON.stringify(catalog, null, 2), {
-    access: "private",
+    access: "public",
     allowOverwrite: true,
     contentType: "application/json",
     cacheControlMaxAge: 60
@@ -250,6 +250,40 @@ const validateCatalog = (catalog) => {
   );
 };
 
+const getSafeErrorDetail = (error) => {
+  if (!error) {
+    return "Unknown error.";
+  }
+
+  return error.message || String(error);
+};
+
+app.get("/api/health", async (request, response) => {
+  const health = {
+    success: true,
+    runtime: isVercelRuntime() ? "vercel" : "local",
+    blobToken: hasBlobToken(),
+    catalogFile: fs.existsSync(CATALOG_PATH),
+    blob: "not_checked"
+  };
+
+  if (hasBlobToken()) {
+    try {
+      const { list } = await getBlobSdk();
+      await list({ prefix: CATALOG_BLOB_PATH, limit: 1 });
+      health.blob = "connected";
+    } catch (error) {
+      health.success = false;
+      health.blob = "error";
+      health.errorCode = error.name || error.code || "BLOB_ERROR";
+      health.errorDetail = getSafeErrorDetail(error);
+    }
+  }
+
+  response.setHeader("Cache-Control", "no-store");
+  response.status(health.success ? 200 : 500).json(health);
+});
+
 app.get("/api/catalog", async (request, response, next) => {
   try {
     response.setHeader("Cache-Control", "no-store");
@@ -358,7 +392,8 @@ app.use((error, request, response, next) => {
   response.status(500).json({
     success: false,
     message: "Server error.",
-    detail: process.env.NODE_ENV === "production" ? undefined : error.message
+    code: error.name || error.code || "SERVER_ERROR",
+    detail: getSafeErrorDetail(error)
   });
 });
 

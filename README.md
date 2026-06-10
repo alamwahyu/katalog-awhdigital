@@ -6,7 +6,7 @@ Website katalog undangan digital dengan admin panel.
 
 Project ini memakai Vercel Blob sebagai storage production:
 
-- Data katalog disimpan sebagai private Blob di path `data/catalog.json`.
+- Data katalog disimpan di Blob path `data/catalog.json`.
 - Gambar tema upload disimpan di Blob prefix `theme-images/`.
 - Jika `data/catalog.json` belum ada di Blob, server akan seed otomatis dari file lokal `catalog.json` saat `/api/catalog` pertama kali dibuka.
 - Saat tema dihapus atau gambar diganti, gambar lama di Vercel Blob ikut dihapus selama tidak dipakai tema lain.
@@ -43,9 +43,10 @@ Alternatif paling mudah untuk local test memakai environment Vercel adalah menja
 1. Buka dashboard Vercel project.
 2. Masuk ke tab `Storage`.
 3. Buat atau connect `Blob` store ke project ini.
-4. Vercel akan membuat environment variable `BLOB_READ_WRITE_TOKEN`.
-5. Deploy ulang project.
-6. Buka `/api/catalog` atau halaman utama untuk membuat seed awal `data/catalog.json` di Blob.
+4. Pilih access `Public`, karena gambar tema harus bisa tampil langsung dari URL Blob.
+5. Pastikan environment variable tetap bernama `BLOB_READ_WRITE_TOKEN`.
+6. Deploy ulang project.
+7. Buka `/api/catalog` atau halaman utama untuk membuat seed awal `data/catalog.json` di Blob.
 
 ## Deploy Vercel
 
