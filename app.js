@@ -269,8 +269,16 @@ app.get("/api/health", async (request, response) => {
 
   if (hasBlobToken()) {
     try {
-      const { list } = await getBlobSdk();
+      const { del, list, put } = await getBlobSdk();
+      const checkPath = `health/check-${Date.now()}-${crypto.randomBytes(3).toString("hex")}.txt`;
       await list({ prefix: CATALOG_BLOB_PATH, limit: 1 });
+      const checkBlob = await put(checkPath, "ok", {
+        access: "public",
+        contentType: "text/plain",
+        addRandomSuffix: false,
+        cacheControlMaxAge: 60
+      });
+      await del(checkBlob.url);
       health.blob = "connected";
     } catch (error) {
       health.success = false;

@@ -385,7 +385,12 @@ const persistCatalog = async (nextState) => {
   }
 
   if (!response.ok) {
-    throw new Error(result && result.message ? result.message : "AWH_REMOTE_SAVE_FAILED");
+    const message = [
+      result && result.message ? result.message : "AWH_REMOTE_SAVE_FAILED",
+      result && result.code ? `(${result.code})` : "",
+      result && result.detail ? result.detail : ""
+    ].filter(Boolean).join(" ");
+    throw new Error(message);
   }
 
   return normalizeCatalog(result && result.catalog ? result.catalog : result);
@@ -466,6 +471,21 @@ const saveCatalogPackagesAsync = async (packages) => {
   return catalogState.packages;
 };
 
+const saveCatalogSnapshot = (nextCatalog) => {
+  const nextState = normalizeCatalog(nextCatalog);
+  persistDraft(nextState);
+  catalogState = nextState;
+  dispatchCatalogEvents();
+  return catalogState;
+};
+
+const saveCatalogSnapshotAsync = async (nextCatalog) => {
+  const nextState = normalizeCatalog(nextCatalog);
+  catalogState = await persistCatalog(nextState);
+  dispatchCatalogEvents();
+  return catalogState;
+};
+
 const exportCatalogJson = () => JSON.stringify(catalogState, null, 2);
 
 const clearCatalogDraft = () => {
@@ -502,6 +522,8 @@ window.AWHCatalogStore = {
   loadPackages: loadCatalogPackages,
   savePackages: saveCatalogPackages,
   savePackagesAsync: saveCatalogPackagesAsync,
+  saveCatalog: saveCatalogSnapshot,
+  saveCatalogAsync: saveCatalogSnapshotAsync,
   exportJson: exportCatalogJson,
   clearDraft: clearCatalogDraft,
   isRemote: () => isRemoteCatalog,

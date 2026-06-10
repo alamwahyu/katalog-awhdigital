@@ -62,15 +62,32 @@ const adminHeaderActions = document.getElementById("admin-header-actions");
 const themeModal = document.getElementById("theme-modal");
 const categoryModal = document.getElementById("category-modal");
 const priceModal = document.getElementById("price-modal");
+const adminLoadingOverlay = document.getElementById("admin-loading-overlay");
 
 let themes = [];
 let selectedImage = "";
 let categories = [];
 let pricePackages = [];
+let loadingCounter = 0;
 
 const IMAGE_MAX_SIZE = 900;
 const IMAGE_QUALITY = 0.76;
 const THEME_UPLOAD_ENDPOINT = "/api/upload-theme";
+
+const showLoading = () => {
+  loadingCounter += 1;
+  adminLoadingOverlay.hidden = false;
+  document.body.classList.add("admin-is-loading");
+};
+
+const hideLoading = () => {
+  loadingCounter = Math.max(0, loadingCounter - 1);
+
+  if (loadingCounter === 0) {
+    adminLoadingOverlay.hidden = true;
+    document.body.classList.remove("admin-is-loading");
+  }
+};
 
 const onlyDigits = (value) => value.replace(/[^\d]/g, "");
 
@@ -125,7 +142,7 @@ const handleStorageError = (error, element = formMessage) => {
     return true;
   }
 
-  setMessage(element, "Data gagal disimpan. Pastikan API aktif dan Vercel Blob sudah terhubung.", "error");
+  setMessage(element, `Data gagal disimpan. ${error && error.message ? error.message : "Pastikan API aktif dan Vercel Blob sudah terhubung."}`, "error");
   console.error(error);
   return true;
 };
@@ -281,6 +298,30 @@ const savePackages = async (nextPackages = pricePackages, messageElement = price
     renderAdmin();
     return true;
   } catch (error) {
+    pricePackages = previousPackages;
+    handleStorageError(error, messageElement);
+    return false;
+  }
+};
+
+const saveCatalogSnapshot = async (nextCatalog, messageElement = formMessage) => {
+  const previousThemes = themes;
+  const previousCategories = categories;
+  const previousPackages = pricePackages;
+
+  try {
+    const savedCatalog = window.AWHCatalogStore.saveCatalogAsync
+      ? await window.AWHCatalogStore.saveCatalogAsync(nextCatalog)
+      : window.AWHCatalogStore.saveCatalog(nextCatalog);
+    themes = savedCatalog.themes;
+    categories = savedCatalog.categories;
+    pricePackages = savedCatalog.packages;
+    populateCategories();
+    renderAdmin();
+    return true;
+  } catch (error) {
+    themes = previousThemes;
+    categories = previousCategories;
     pricePackages = previousPackages;
     handleStorageError(error, messageElement);
     return false;
@@ -484,18 +525,23 @@ const uploadThemeImage = async (file) => {
 
 loginForm.addEventListener("submit", (event) => {
   event.preventDefault();
+  showLoading();
 
-  const username = document.getElementById("username").value.trim();
-  const password = document.getElementById("password").value;
+  try {
+    const username = document.getElementById("username").value.trim();
+    const password = document.getElementById("password").value;
 
-  if (username !== ADMIN_USERNAME || password !== ADMIN_PASSWORD) {
-    setMessage(loginMessage, "Username atau password salah.", "error");
-    return;
+    if (username !== ADMIN_USERNAME || password !== ADMIN_PASSWORD) {
+      setMessage(loginMessage, "Username atau password salah.", "error");
+      return;
+    }
+
+    sessionStorage.setItem(ADMIN_SESSION_KEY, "true");
+    setMessage(loginMessage, "");
+    showDashboard();
+  } finally {
+    hideLoading();
   }
-
-  sessionStorage.setItem(ADMIN_SESSION_KEY, "true");
-  setMessage(loginMessage, "");
-  showDashboard();
 });
 
 logoutButton.addEventListener("click", () => {
@@ -572,6 +618,8 @@ themeImageInput.addEventListener("change", async () => {
     return;
   }
 
+  showLoading();
+
   try {
     selectedImage = await uploadThemeImage(file);
     themeImageUrlInput.value = "";
@@ -591,6 +639,8 @@ themeImageInput.addEventListener("change", async () => {
       selectedImage = "";
       setMessage(formMessage, "Gambar gagal diproses. Coba gunakan gambar lain atau isi URL gambar.", "error");
     }
+  } finally {
+    hideLoading();
   }
 });
 
@@ -643,26 +693,32 @@ themeForm.addEventListener("submit", async (event) => {
     bestSeller: themeBestSellerInput.checked
   };
 
-  if (editingId) {
-    const nextThemes = themes.map((theme) => theme.id === editingId ? themePayload : theme);
+  showLoading();
 
-    if (!await saveThemes(nextThemes, formMessage)) {
-      return;
+  try {
+    if (editingId) {
+      const nextThemes = themes.map((theme) => theme.id === editingId ? themePayload : theme);
+
+      if (!await saveThemes(nextThemes, formMessage)) {
+        return;
+      }
+
+      resetForm();
+      closeModal(themeModal);
+      setMessage(formMessage, "Tema berhasil diperbarui.", "success");
+    } else {
+      const nextThemes = [themePayload, ...themes];
+
+      if (!await saveThemes(nextThemes, formMessage)) {
+        return;
+      }
+
+      resetForm();
+      closeModal(themeModal);
+      setMessage(formMessage, "Tema baru berhasil ditambahkan.", "success");
     }
-
-    resetForm();
-    closeModal(themeModal);
-    setMessage(formMessage, "Tema berhasil diperbarui.", "success");
-  } else {
-    const nextThemes = [themePayload, ...themes];
-
-    if (!await saveThemes(nextThemes, formMessage)) {
-      return;
-    }
-
-    resetForm();
-    closeModal(themeModal);
-    setMessage(formMessage, "Tema baru berhasil ditambahkan.", "success");
+  } finally {
+    hideLoading();
   }
 });
 
@@ -686,7 +742,13 @@ themeList.addEventListener("click", async (event) => {
       return;
     }
 
-    await saveThemes(themes.filter((item) => item.id !== themeId), formMessage);
+    showLoading();
+
+    try {
+      await saveThemes(themes.filter((item) => item.id !== themeId), formMessage);
+    } finally {
+      hideLoading();
+    }
     return;
   }
 
@@ -738,26 +800,32 @@ priceForm.addEventListener("submit", async (event) => {
     featured: priceFeaturedInput.checked
   };
 
-  if (editingId) {
-    const nextPackages = pricePackages.map((pricePackage) => pricePackage.id === editingId ? payload : pricePackage);
+  showLoading();
 
-    if (!await savePackages(nextPackages, priceMessage)) {
-      return;
+  try {
+    if (editingId) {
+      const nextPackages = pricePackages.map((pricePackage) => pricePackage.id === editingId ? payload : pricePackage);
+
+      if (!await savePackages(nextPackages, priceMessage)) {
+        return;
+      }
+
+      setMessage(priceMessage, "Harga berhasil diperbarui.", "success");
+    } else {
+      const nextPackages = [payload, ...pricePackages];
+
+      if (!await savePackages(nextPackages, priceMessage)) {
+        return;
+      }
+
+      setMessage(priceMessage, "Harga baru berhasil ditambahkan.", "success");
     }
 
-    setMessage(priceMessage, "Harga berhasil diperbarui.", "success");
-  } else {
-    const nextPackages = [payload, ...pricePackages];
-
-    if (!await savePackages(nextPackages, priceMessage)) {
-      return;
-    }
-
-    setMessage(priceMessage, "Harga baru berhasil ditambahkan.", "success");
+    resetPriceForm();
+    closeModal(priceModal);
+  } finally {
+    hideLoading();
   }
-
-  resetPriceForm();
-  closeModal(priceModal);
 });
 
 priceList.addEventListener("click", async (event) => {
@@ -780,7 +848,13 @@ priceList.addEventListener("click", async (event) => {
       return;
     }
 
-    await savePackages(pricePackages.filter((item) => item.id !== packageId), priceMessage);
+    showLoading();
+
+    try {
+      await savePackages(pricePackages.filter((item) => item.id !== packageId), priceMessage);
+    } finally {
+      hideLoading();
+    }
     return;
   }
 
@@ -823,27 +897,33 @@ categoryForm.addEventListener("submit", async (event) => {
     description
   };
 
-  if (editingId) {
-    const nextCategories = categories.map((category) => category.id === editingId ? payload : category);
+  showLoading();
 
-    if (!await saveCategories(nextCategories, categoryMessage)) {
-      return;
+  try {
+    if (editingId) {
+      const nextCategories = categories.map((category) => category.id === editingId ? payload : category);
+
+      if (!await saveCategories(nextCategories, categoryMessage)) {
+        return;
+      }
+
+      setMessage(categoryMessage, "Kategori berhasil diperbarui.", "success");
+    } else {
+      const nextCategories = [...categories, payload];
+
+      if (!await saveCategories(nextCategories, categoryMessage)) {
+        return;
+      }
+
+      setMessage(categoryMessage, "Kategori baru berhasil ditambahkan.", "success");
     }
 
-    setMessage(categoryMessage, "Kategori berhasil diperbarui.", "success");
-  } else {
-    const nextCategories = [...categories, payload];
-
-    if (!await saveCategories(nextCategories, categoryMessage)) {
-      return;
-    }
-
-    setMessage(categoryMessage, "Kategori baru berhasil ditambahkan.", "success");
+    resetCategoryForm();
+    closeModal(categoryModal);
+    setMessage(categoryMessage, editingId ? "Kategori berhasil diperbarui." : "Kategori baru berhasil ditambahkan.", "success");
+  } finally {
+    hideLoading();
   }
-
-  resetCategoryForm();
-  closeModal(categoryModal);
-  setMessage(categoryMessage, editingId ? "Kategori berhasil diperbarui." : "Kategori baru berhasil ditambahkan.", "success");
 });
 
 categoryList.addEventListener("click", async (event) => {
@@ -880,21 +960,23 @@ categoryList.addEventListener("click", async (event) => {
     const nextThemes = themes.filter((theme) => theme.categoryId !== categoryId);
     const nextPackages = pricePackages.filter((pricePackage) => pricePackage.categoryId !== categoryId);
 
-    if (!await saveThemes(nextThemes, categoryMessage)) {
-      return;
-    }
+    showLoading();
 
-    if (!await savePackages(nextPackages, categoryMessage)) {
-      return;
-    }
+    try {
+      if (!await saveCatalogSnapshot({
+        categories: nextCategories,
+        packages: nextPackages,
+        themes: nextThemes
+      }, categoryMessage)) {
+        return;
+      }
 
-    if (!await saveCategories(nextCategories, categoryMessage)) {
-      return;
+      resetCategoryForm();
+      resetPriceForm();
+      resetForm();
+    } finally {
+      hideLoading();
     }
-
-    resetCategoryForm();
-    resetPriceForm();
-    resetForm();
     return;
   }
 
