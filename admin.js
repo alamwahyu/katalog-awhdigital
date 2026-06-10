@@ -125,7 +125,7 @@ const handleStorageError = (error, element = formMessage) => {
     return true;
   }
 
-  setMessage(element, "Data gagal disimpan. Pastikan server Node.js berjalan dan catalog.json bisa ditulis.", "error");
+  setMessage(element, "Data gagal disimpan. Pastikan API aktif dan Vercel Blob sudah terhubung.", "error");
   console.error(error);
   return true;
 };
@@ -576,7 +576,11 @@ themeImageInput.addEventListener("change", async () => {
     selectedImage = await uploadThemeImage(file);
     themeImageUrlInput.value = "";
     renderImagePreview(selectedImage);
-    setMessage(formMessage, "Gambar berhasil dikompres dan diupload ke folder thema.", "success");
+    setMessage(
+      formMessage,
+      selectedImage.startsWith("http") ? "Gambar berhasil dikompres dan diupload ke Vercel Blob." : "Gambar berhasil dikompres dan disimpan ke storage lokal.",
+      "success"
+    );
   } catch (error) {
     try {
       selectedImage = await fileToCompressedDataUrl(file);

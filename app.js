@@ -7,7 +7,8 @@ const multer = require("multer");
 const ROOT_DIR = __dirname;
 const CATALOG_PATH = path.join(ROOT_DIR, "catalog.json");
 const THEMA_DIR = path.join(ROOT_DIR, "thema");
-const IS_VERCEL = Boolean(process.env.VERCEL);
+const CATALOG_BLOB_PATH = "data/catalog.json";
+const BLOB_IMAGE_PREFIX = "theme-images";
 
 const IMAGE_TYPES = {
   "image/jpeg": "jpg",
@@ -45,6 +46,93 @@ const readCatalog = async () => {
   return JSON.parse(content);
 };
 
+const hasBlobToken = () => Boolean(process.env.BLOB_READ_WRITE_TOKEN);
+
+const isVercelRuntime = () => Boolean(process.env.VERCEL);
+
+const rejectMissingBlobToken = (response) => {
+  response.status(503).json({
+    success: false,
+    message: "Vercel Blob belum terhubung. Pastikan environment BLOB_READ_WRITE_TOKEN tersedia di Vercel."
+  });
+};
+
+const getBlobSdk = async () => {
+  return import("@vercel/blob");
+};
+
+const blobStreamToJson = async (stream) => {
+  const text = await new Response(stream).text();
+  return JSON.parse(text);
+};
+
+const readLegacyPublicBlobCatalog = async () => {
+  const { list } = await getBlobSdk();
+  const { blobs } = await list({
+    prefix: CATALOG_BLOB_PATH,
+    limit: 10
+  });
+  const catalogBlob = blobs.find((blob) => blob.pathname === CATALOG_BLOB_PATH);
+
+  if (!catalogBlob) {
+    return null;
+  }
+
+  const response = await fetch(catalogBlob.downloadUrl || catalogBlob.url, {
+    cache: "no-store"
+  });
+
+  if (!response.ok) {
+    throw new Error("Blob catalog gagal dibaca.");
+  }
+
+  return response.json();
+};
+
+const readBlobCatalog = async () => {
+  const { get, put } = await getBlobSdk();
+  const catalogBlob = await get(CATALOG_BLOB_PATH, {
+    access: "private",
+    useCache: false
+  }).catch(() => null);
+
+  if (catalogBlob && catalogBlob.stream) {
+    return blobStreamToJson(catalogBlob.stream);
+  }
+
+  const legacyCatalog = await readLegacyPublicBlobCatalog();
+
+  if (!legacyCatalog) {
+    const localCatalog = await readCatalog();
+    await put(CATALOG_BLOB_PATH, JSON.stringify(localCatalog, null, 2), {
+      access: "private",
+      allowOverwrite: true,
+      contentType: "application/json",
+      cacheControlMaxAge: 60
+    });
+    return localCatalog;
+  }
+
+  await put(CATALOG_BLOB_PATH, JSON.stringify(legacyCatalog, null, 2), {
+    access: "private",
+    allowOverwrite: true,
+    contentType: "application/json",
+    cacheControlMaxAge: 60
+  });
+  return legacyCatalog;
+};
+
+const writeBlobCatalog = async (catalog) => {
+  const { put } = await getBlobSdk();
+
+  await put(CATALOG_BLOB_PATH, JSON.stringify(catalog, null, 2), {
+    access: "private",
+    allowOverwrite: true,
+    contentType: "application/json",
+    cacheControlMaxAge: 60
+  });
+};
+
 const writeCatalog = async (catalog) => {
   const temporaryPath = `${CATALOG_PATH}.tmp`;
   const content = `${JSON.stringify(catalog, null, 2)}\n`;
@@ -76,6 +164,28 @@ const getLocalThemeImagePath = (imagePath) => {
   return absolutePath;
 };
 
+const getManagedBlobImage = (imagePath) => {
+  if (!imagePath || typeof imagePath !== "string") {
+    return "";
+  }
+
+  if (!imagePath.startsWith("http")) {
+    return imagePath.startsWith(`${BLOB_IMAGE_PREFIX}/`) ? imagePath : "";
+  }
+
+  try {
+    const url = new URL(imagePath);
+
+    if (!url.hostname.includes("blob.vercel-storage.com")) {
+      return "";
+    }
+
+    return url.pathname.includes(`/${BLOB_IMAGE_PREFIX}/`) ? imagePath : "";
+  } catch (error) {
+    return "";
+  }
+};
+
 const getThemeImageSet = (catalog) => {
   if (!catalog || !Array.isArray(catalog.themes)) {
     return new Set();
@@ -84,6 +194,18 @@ const getThemeImageSet = (catalog) => {
   return new Set(
     catalog.themes
       .map((theme) => getLocalThemeImagePath(theme.image))
+      .filter(Boolean)
+  );
+};
+
+const getBlobImageSet = (catalog) => {
+  if (!catalog || !Array.isArray(catalog.themes)) {
+    return new Set();
+  }
+
+  return new Set(
+    catalog.themes
+      .map((theme) => getManagedBlobImage(theme.image))
       .filter(Boolean)
   );
 };
@@ -102,6 +224,21 @@ const deleteUnusedThemeImages = async (previousCatalog, nextCatalog) => {
       }
     }
   }));
+
+  if (!hasBlobToken()) {
+    return;
+  }
+
+  const previousBlobImages = getBlobImageSet(previousCatalog);
+  const nextBlobImages = getBlobImageSet(nextCatalog);
+  const unusedBlobImages = [...previousBlobImages].filter((imagePath) => !nextBlobImages.has(imagePath));
+
+  if (!unusedBlobImages.length) {
+    return;
+  }
+
+  const { del } = await getBlobSdk();
+  await del(unusedBlobImages);
 };
 
 const validateCatalog = (catalog) => {
@@ -113,17 +250,10 @@ const validateCatalog = (catalog) => {
   );
 };
 
-const rejectVercelFileWrite = (response) => {
-  response.status(501).json({
-    success: false,
-    message: "Vercel serverless tidak mendukung penyimpanan file permanen. Gunakan database/storage seperti Supabase + Vercel Blob/Cloudinary untuk mode production."
-  });
-};
-
 app.get("/api/catalog", async (request, response, next) => {
   try {
     response.setHeader("Cache-Control", "no-store");
-    response.json(await readCatalog());
+    response.json(hasBlobToken() ? await readBlobCatalog() : await readCatalog());
   } catch (error) {
     next(error);
   }
@@ -131,8 +261,8 @@ app.get("/api/catalog", async (request, response, next) => {
 
 app.put("/api/catalog", async (request, response, next) => {
   try {
-    if (IS_VERCEL) {
-      rejectVercelFileWrite(response);
+    if (!hasBlobToken() && isVercelRuntime()) {
+      rejectMissingBlobToken(response);
       return;
     }
 
@@ -143,8 +273,14 @@ app.put("/api/catalog", async (request, response, next) => {
       return;
     }
 
-    const previousCatalog = await readCatalog();
-    await writeCatalog(catalog);
+    const previousCatalog = hasBlobToken() ? await readBlobCatalog() : await readCatalog();
+
+    if (hasBlobToken()) {
+      await writeBlobCatalog(catalog);
+    } else {
+      await writeCatalog(catalog);
+    }
+
     await deleteUnusedThemeImages(previousCatalog, catalog);
     response.json({ success: true, catalog });
   } catch (error) {
@@ -154,8 +290,8 @@ app.put("/api/catalog", async (request, response, next) => {
 
 app.post("/api/upload-theme", upload.single("themeImage"), async (request, response, next) => {
   try {
-    if (IS_VERCEL) {
-      rejectVercelFileWrite(response);
+    if (!hasBlobToken() && isVercelRuntime()) {
+      rejectMissingBlobToken(response);
       return;
     }
 
@@ -171,9 +307,23 @@ app.post("/api/upload-theme", upload.single("themeImage"), async (request, respo
       return;
     }
 
+    const filename = `tema-${new Date().toISOString().replace(/[:.]/g, "-")}-${crypto.randomBytes(4).toString("hex")}.${extension}`;
+
+    if (hasBlobToken()) {
+      const { put } = await getBlobSdk();
+      const blob = await put(`${BLOB_IMAGE_PREFIX}/${filename}`, request.file.buffer, {
+        access: "public",
+        contentType: request.file.mimetype,
+        addRandomSuffix: false,
+        cacheControlMaxAge: 60 * 60 * 24 * 30
+      });
+
+      response.json({ success: true, path: blob.url });
+      return;
+    }
+
     await fs.promises.mkdir(THEMA_DIR, { recursive: true });
 
-    const filename = `tema-${new Date().toISOString().replace(/[:.]/g, "-")}-${crypto.randomBytes(4).toString("hex")}.${extension}`;
     const targetPath = path.join(THEMA_DIR, filename);
 
     await fs.promises.writeFile(targetPath, request.file.buffer);
