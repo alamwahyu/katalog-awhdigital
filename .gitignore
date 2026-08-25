@@ -5,3 +5,4 @@ catalog.json.tmp
 .env.local
 .vercel
 .env*
+!.env.example

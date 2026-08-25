@@ -1,20 +1,39 @@
-# Katalog AWH Digital Latest with storage
+# Katalog AWH Digital
 
 Website katalog undangan digital dengan admin panel.
 
-## Storage
+## Storage Production VPS
 
-Project ini memakai Vercel Blob sebagai storage production:
+Mode utama untuk VPS memakai PostgreSQL:
 
-- Data katalog disimpan di Blob path `data/catalog.json`.
-- Gambar tema upload disimpan di Blob prefix `theme-images/`.
-- Jika `data/catalog.json` belum ada di Blob, server akan seed otomatis dari file lokal `catalog.json` saat `/api/catalog` pertama kali dibuka.
-- Saat tema dihapus atau gambar diganti, gambar lama di Vercel Blob ikut dihapus selama tidak dipakai tema lain.
+- Data katalog disimpan di tabel `catalog_store`.
+- Saat tabel masih kosong, data awal akan di-seed dari `catalog.json`.
+- Upload gambar tema disimpan ke filesystem VPS lewat folder `thema/`.
+- Saat tema dihapus atau gambar tema diganti, file gambar lama di `thema/` ikut dihapus selama tidak dipakai tema lain.
 
-Saat development tanpa `BLOB_READ_WRITE_TOKEN`, server otomatis fallback ke:
+Fallback masih tersedia:
 
-- `catalog.json` untuk data katalog.
-- folder `thema/` untuk upload gambar.
+- Jika `DATABASE_URL` tidak ada tetapi `BLOB_READ_WRITE_TOKEN` ada, app memakai Vercel Blob.
+- Jika keduanya tidak ada, app fallback ke `catalog.json` dan folder `thema/` lokal.
+
+## Environment
+
+Copy contoh env:
+
+```bash
+cp .env.example .env.local
+```
+
+Isi minimal untuk VPS:
+
+```env
+NODE_ENV=production
+PORT=3001
+DATABASE_URL=postgres://awh_catalog:password_database@127.0.0.1:5432/awh_catalog
+THEMA_DIR=/var/www/awh-digital/thema
+```
+
+`THEMA_DIR` boleh dihapus jika ingin memakai folder `thema/` di dalam project.
 
 ## Jalankan Lokal
 
@@ -27,34 +46,141 @@ Buka:
 
 - Website: `http://localhost:3001`
 - Admin: `http://localhost:3001/admin.html`
+- Health: `http://localhost:3001/api/health`
 
-Untuk memakai Vercel Blob di lokal, tarik environment dari Vercel:
+Jika PostgreSQL aktif, `/api/health` akan menampilkan:
 
-```bash
-vercel env pull .env.local
+```json
+{
+  "storage": "postgres",
+  "database": "connected"
+}
 ```
 
-Lalu pastikan `.env.local` berisi `BLOB_READ_WRITE_TOKEN`. File ini akan dibaca otomatis saat menjalankan `npm start`.
+## Setup VPS Ubuntu 24
 
-Alternatif paling mudah untuk local test memakai environment Vercel adalah menjalankan project dengan `vercel dev`.
+Install package dasar:
 
-## Setup Vercel Blob
+```bash
+sudo apt update
+sudo apt install -y nodejs npm postgresql postgresql-contrib nginx
+sudo npm install -g pm2
+```
 
-1. Buka dashboard Vercel project.
-2. Masuk ke tab `Storage`.
-3. Buat atau connect `Blob` store ke project ini.
-4. Pilih access `Public`, karena gambar tema harus bisa tampil langsung dari URL Blob.
-5. Pastikan environment variable tetap bernama `BLOB_READ_WRITE_TOKEN`.
-6. Deploy ulang project.
-7. Buka `/api/catalog` atau halaman utama untuk membuat seed awal `data/catalog.json` di Blob.
+Pastikan versi Node minimal 20:
 
-## Deploy Vercel
+```bash
+node -v
+```
 
-Project ini sudah disiapkan untuk Express serverless di Vercel:
+Jika Node bawaan Ubuntu terlalu lama, install Node 20/22 dari NodeSource atau gunakan `nvm`.
 
-- `app.js` berisi Express app dan API storage Blob.
-- `server.js` menjalankan Express untuk local/VPS.
-- `api/index.js` mengekspor Express app untuk Vercel Functions.
-- `vercel.json` melakukan rewrite semua route ke serverless function.
+## Setup PostgreSQL
 
-Setelah deploy, admin panel akan melakukan create, update, delete katalog lewat `/api/catalog`, dan upload gambar lewat `/api/upload-theme`.
+Masuk ke PostgreSQL:
+
+```bash
+sudo -u postgres psql
+```
+
+Buat user dan database:
+
+```sql
+CREATE USER awh_catalog WITH PASSWORD 'ganti_password_ini';
+CREATE DATABASE awh_catalog OWNER awh_catalog;
+\q
+```
+
+Schema akan dibuat otomatis oleh aplikasi. Jika ingin manual:
+
+```bash
+psql "postgres://awh_catalog:ganti_password_ini@127.0.0.1:5432/awh_catalog" -f database.sql
+```
+
+## Deploy App
+
+Contoh lokasi deploy:
+
+```bash
+sudo mkdir -p /var/www/awh-digital
+sudo chown -R $USER:$USER /var/www/awh-digital
+```
+
+Upload atau clone repo ke `/var/www/awh-digital`, lalu:
+
+```bash
+cd /var/www/awh-digital
+npm install --omit=dev
+cp .env.example .env.local
+nano .env.local
+mkdir -p thema
+npm start
+```
+
+Jika sudah OK, jalankan dengan PM2:
+
+```bash
+pm2 start server.js --name awh-digital
+pm2 save
+pm2 startup
+```
+
+## Nginx Reverse Proxy
+
+Buat config:
+
+```bash
+sudo nano /etc/nginx/sites-available/awh-digital
+```
+
+Isi:
+
+```nginx
+server {
+    listen 80;
+    server_name domain-anda.com www.domain-anda.com;
+
+    client_max_body_size 10M;
+
+    location / {
+        proxy_pass http://127.0.0.1:3001;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+Aktifkan:
+
+```bash
+sudo ln -s /etc/nginx/sites-available/awh-digital /etc/nginx/sites-enabled/awh-digital
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+## SSL
+
+```bash
+sudo apt install -y certbot python3-certbot-nginx
+sudo certbot --nginx -d domain-anda.com -d www.domain-anda.com
+```
+
+## Cek Setelah Deploy
+
+```bash
+curl http://127.0.0.1:3001/api/health
+```
+
+Pastikan hasilnya:
+
+- `"storage": "postgres"`
+- `"database": "connected"`
+
+Jika admin gagal save, cek log:
+
+```bash
+pm2 logs awh-digital
+```

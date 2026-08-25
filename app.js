@@ -6,9 +6,11 @@ const multer = require("multer");
 
 const ROOT_DIR = __dirname;
 const CATALOG_PATH = path.join(ROOT_DIR, "catalog.json");
-const THEMA_DIR = path.join(ROOT_DIR, "thema");
+const THEMA_PUBLIC_PREFIX = "thema";
+const THEMA_DIR = process.env.THEMA_DIR ? path.resolve(process.env.THEMA_DIR) : path.join(ROOT_DIR, THEMA_PUBLIC_PREFIX);
 const CATALOG_BLOB_PATH = "data/catalog.json";
 const BLOB_IMAGE_PREFIX = "theme-images";
+const CATALOG_DATABASE_KEY = "catalog";
 
 const IMAGE_TYPES = {
   "image/jpeg": "jpg",
@@ -33,6 +35,9 @@ const upload = multer({
 });
 
 app.use(express.json({ limit: "5mb" }));
+app.use(`/${THEMA_PUBLIC_PREFIX}`, express.static(THEMA_DIR, {
+  maxAge: "30d"
+}));
 app.use(express.static(ROOT_DIR, {
   extensions: ["html"],
   setHeaders: (response, filePath) => {
@@ -48,7 +53,75 @@ const readCatalog = async () => {
 
 const hasBlobToken = () => Boolean(process.env.BLOB_READ_WRITE_TOKEN);
 
+const hasDatabaseUrl = () => Boolean(process.env.DATABASE_URL || process.env.POSTGRES_URL);
+
 const isVercelRuntime = () => Boolean(process.env.VERCEL);
+
+let pgPool = null;
+let databaseReadyPromise = null;
+
+const getDatabaseUrl = () => process.env.DATABASE_URL || process.env.POSTGRES_URL;
+
+const shouldUseDatabaseSsl = () => {
+  return process.env.DATABASE_SSL === "true" || process.env.PGSSLMODE === "require";
+};
+
+const getPgPool = () => {
+  if (!pgPool) {
+    const { Pool } = require("pg");
+    pgPool = new Pool({
+      connectionString: getDatabaseUrl(),
+      ssl: shouldUseDatabaseSsl() ? { rejectUnauthorized: false } : undefined
+    });
+  }
+
+  return pgPool;
+};
+
+const ensureDatabase = async () => {
+  if (!databaseReadyPromise) {
+    databaseReadyPromise = getPgPool().query(`
+      CREATE TABLE IF NOT EXISTS catalog_store (
+        key TEXT PRIMARY KEY,
+        data JSONB NOT NULL,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+  }
+
+  await databaseReadyPromise;
+};
+
+const readDatabaseCatalog = async () => {
+  await ensureDatabase();
+
+  const result = await getPgPool().query(
+    "SELECT data FROM catalog_store WHERE key = $1",
+    [CATALOG_DATABASE_KEY]
+  );
+
+  if (result.rows.length) {
+    return result.rows[0].data;
+  }
+
+  const localCatalog = await readCatalog();
+  await writeDatabaseCatalog(localCatalog);
+  return localCatalog;
+};
+
+const writeDatabaseCatalog = async (catalog) => {
+  await ensureDatabase();
+
+  await getPgPool().query(
+    `
+      INSERT INTO catalog_store (key, data, updated_at)
+      VALUES ($1, $2::jsonb, NOW())
+      ON CONFLICT (key)
+      DO UPDATE SET data = EXCLUDED.data, updated_at = NOW()
+    `,
+    [CATALOG_DATABASE_KEY, JSON.stringify(catalog)]
+  );
+};
 
 const rejectMissingBlobToken = (response) => {
   response.status(503).json({
@@ -151,11 +224,12 @@ const getLocalThemeImagePath = (imagePath) => {
 
   const normalizedPath = imagePath.replace(/^\/+/, "");
 
-  if (!normalizedPath.startsWith("thema/")) {
+  if (!normalizedPath.startsWith(`${THEMA_PUBLIC_PREFIX}/`)) {
     return "";
   }
 
-  const absolutePath = path.resolve(ROOT_DIR, normalizedPath);
+  const relativeImagePath = normalizedPath.slice(THEMA_PUBLIC_PREFIX.length + 1);
+  const absolutePath = path.resolve(THEMA_DIR, relativeImagePath);
 
   if (!absolutePath.startsWith(THEMA_DIR + path.sep)) {
     return "";
@@ -259,15 +333,31 @@ const getSafeErrorDetail = (error) => {
 };
 
 app.get("/api/health", async (request, response) => {
+  const storage = hasDatabaseUrl() ? "postgres" : hasBlobToken() ? "blob" : "file";
   const health = {
     success: true,
     runtime: isVercelRuntime() ? "vercel" : "local",
+    storage,
+    databaseUrl: hasDatabaseUrl(),
     blobToken: hasBlobToken(),
     catalogFile: fs.existsSync(CATALOG_PATH),
+    uploadDir: THEMA_DIR,
+    database: "not_checked",
     blob: "not_checked"
   };
 
-  if (hasBlobToken()) {
+  if (hasDatabaseUrl()) {
+    try {
+      await ensureDatabase();
+      await getPgPool().query("SELECT 1");
+      health.database = "connected";
+    } catch (error) {
+      health.success = false;
+      health.database = "error";
+      health.errorCode = error.name || error.code || "DATABASE_ERROR";
+      health.errorDetail = getSafeErrorDetail(error);
+    }
+  } else if (hasBlobToken()) {
     try {
       const { del, list, put } = await getBlobSdk();
       const checkPath = `health/check-${Date.now()}-${crypto.randomBytes(3).toString("hex")}.txt`;
@@ -295,6 +385,11 @@ app.get("/api/health", async (request, response) => {
 app.get("/api/catalog", async (request, response, next) => {
   try {
     response.setHeader("Cache-Control", "no-store");
+    if (hasDatabaseUrl()) {
+      response.json(await readDatabaseCatalog());
+      return;
+    }
+
     response.json(hasBlobToken() ? await readBlobCatalog() : await readCatalog());
   } catch (error) {
     next(error);
@@ -303,7 +398,7 @@ app.get("/api/catalog", async (request, response, next) => {
 
 app.put("/api/catalog", async (request, response, next) => {
   try {
-    if (!hasBlobToken() && isVercelRuntime()) {
+    if (!hasDatabaseUrl() && !hasBlobToken() && isVercelRuntime()) {
       rejectMissingBlobToken(response);
       return;
     }
@@ -315,9 +410,15 @@ app.put("/api/catalog", async (request, response, next) => {
       return;
     }
 
-    const previousCatalog = hasBlobToken() ? await readBlobCatalog() : await readCatalog();
+    const previousCatalog = hasDatabaseUrl()
+      ? await readDatabaseCatalog()
+      : hasBlobToken()
+        ? await readBlobCatalog()
+        : await readCatalog();
 
-    if (hasBlobToken()) {
+    if (hasDatabaseUrl()) {
+      await writeDatabaseCatalog(catalog);
+    } else if (hasBlobToken()) {
       await writeBlobCatalog(catalog);
     } else {
       await writeCatalog(catalog);
@@ -332,7 +433,7 @@ app.put("/api/catalog", async (request, response, next) => {
 
 app.post("/api/upload-theme", upload.single("themeImage"), async (request, response, next) => {
   try {
-    if (!hasBlobToken() && isVercelRuntime()) {
+    if (!hasDatabaseUrl() && !hasBlobToken() && isVercelRuntime()) {
       rejectMissingBlobToken(response);
       return;
     }
@@ -351,7 +452,7 @@ app.post("/api/upload-theme", upload.single("themeImage"), async (request, respo
 
     const filename = `tema-${new Date().toISOString().replace(/[:.]/g, "-")}-${crypto.randomBytes(4).toString("hex")}.${extension}`;
 
-    if (hasBlobToken()) {
+    if (!hasDatabaseUrl() && hasBlobToken()) {
       const { put } = await getBlobSdk();
       const blob = await put(`${BLOB_IMAGE_PREFIX}/${filename}`, request.file.buffer, {
         access: "public",
@@ -369,7 +470,7 @@ app.post("/api/upload-theme", upload.single("themeImage"), async (request, respo
     const targetPath = path.join(THEMA_DIR, filename);
 
     await fs.promises.writeFile(targetPath, request.file.buffer);
-    response.json({ success: true, path: `thema/${filename}` });
+    response.json({ success: true, path: `${THEMA_PUBLIC_PREFIX}/${filename}` });
   } catch (error) {
     next(error);
   }
